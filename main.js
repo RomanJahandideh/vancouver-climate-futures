@@ -428,6 +428,26 @@
     }, 1600);
   }
 
+  // The forecast is a scenario projection, not a live weather feed. Real
+  // cited sea-level values are shown alongside clearly labeled model indices.
+  var forecastContent = document.getElementById("forecast-content");
+  var forecastHorizon = document.getElementById("forecast-horizon");
+
+  function renderForecast(horizon) {
+    var flood = floodRisk(horizon, "status_quo");
+    var heat = heatExposure(horizon, "status_quo");
+    var energy = energyVulnerability(horizon, "status_quo");
+    forecastContent.innerHTML =
+      '<div class="forecast-grid">' +
+      '<div class="forecast-card"><h3>False Creek</h3><span class="forecast-value">' + flood.seaLevelRiseM + ' m</span><span class="forecast-label">cited sea-level rise used by the flood scenario</span></div>' +
+      '<div class="forecast-card"><h3>Heat Vision</h3><span class="forecast-value">' + heat.index + ' / 100</span><span class="forecast-label">illustrative status-quo exposure index</span></div>' +
+      '<div class="forecast-card"><h3>Energy Vision</h3><span class="forecast-value">' + energy.index + ' / 100</span><span class="forecast-label">illustrative status-quo vulnerability index</span></div>' +
+      '</div>';
+  }
+
+  renderForecast(forecastHorizon.value);
+  forecastHorizon.addEventListener("change", function () { renderForecast(forecastHorizon.value); });
+
   // ==========================================================================
   // Game state machine
   // ==========================================================================

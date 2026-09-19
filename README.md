@@ -8,6 +8,10 @@ An interactive, place-based serious game about local climate choices and outcome
 
 Future Delta 2.0 is a Unity game. Unity is not something this environment can build, run, or verify end-to-end, and this project series' whole discipline has been: never claim a result that wasn't actually run and checked. So this project is built in Three.js instead, a real, tested, playable, deployable browser-based 3D experience, exercising the same underlying design pattern (real place, real data, meaningful choices, visible consequences, a genuine evaluation instrument) using technology that could be built, run headlessly, and verified in this session.
 
+## Climate projection forecast
+
+The introduction includes a selectable 2050s/2100s climate-projection forecast. It is a long-range scenario outlook, not a live weather forecast. The flood card uses the cited 0.5 m and 1.0 m sea-level-rise horizons and the City's 4.6 m Flood Construction Level. The heat and energy cards display the deterministic model's status-quo indices, which are explicitly illustrative prototype values rather than official City of Vancouver forecasts. The interface labels this boundary directly so modeled scenarios cannot be mistaken for measured observations or participant results.
+
 ## The 3D scene is the point: what changed after real user testing
 
 An earlier version of this project blocked the entire viewport with a full-screen modal at every step, choices, surveys, everything, so the 3D world was never actually visible or explorable, which is exactly backwards for a project whose entire premise is "watch your choices visibly change a real place." Driving the app end-to-end with a real person surfaced that immediately, along with a second, sharper bug: the pre/post survey's Continue button still carried a leftover `disabled` HTML attribute from an earlier draft, so clicking it did nothing at all, not even an error, because a disabled button never fires a click event in the first place. Both are fixed:

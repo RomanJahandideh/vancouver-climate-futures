@@ -24,6 +24,22 @@
     <h1>Vancouver Climate Futures</h1>
     <p>An interactive exploration of local climate choices and outcomes for three real Vancouver places: the False Creek foreshore, a lower-tree-canopy neighbourhood like Marpole, and the city's older rental-housing stock.</p>
     <p class="cite">Grounded in real, cited data: the City of Vancouver's own Coastal Flood Risk Assessment (4.6m flood construction level, ~1m of sea level rise projected by 2100), the real 2021 BC heat dome (619 deaths province-wide, the deadliest weather event in BC history) and its documented ~20&deg;C neighbourhood tree-canopy temperature gap, and the City's real RARA building-retrofit grant program. Every outcome you see is computed from your choices by a deterministic model, not decided by AI.</p>
+    <div class="forecast-box" aria-labelledby="forecast-title">
+      <div class="forecast-heading">
+        <div>
+          <h2 id="forecast-title">Climate projection forecast</h2>
+          <p class="small">Long-range scenario outlook, not a short-term weather forecast.</p>
+        </div>
+        <label class="forecast-select-label" for="forecast-horizon">Horizon
+          <select id="forecast-horizon">
+            <option value="2050s">2050s</option>
+            <option value="2100s" selected>2100s</option>
+          </select>
+        </label>
+      </div>
+      <div id="forecast-content"></div>
+      <p class="forecast-footnote">Sea-level values and the 4.6m Flood Construction Level are cited real inputs. Heat and energy values are transparent prototype indices, not official City of Vancouver forecasts.</p>
+    </div>
     <p class="condition-note" id="condition-note"></p>
     <button class="btn-primary" id="btn-start">Begin</button>
   </div>
