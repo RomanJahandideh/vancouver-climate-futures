@@ -1,0 +1,42 @@
+* { box-sizing: border-box; }
+html, body { margin: 0; font-family: Georgia, "Times New Roman", serif; background: #f3efe4; color: #1c1a17; }
+#app { max-width: 680px; margin: 0 auto; padding: 40px 24px 80px; }
+header h1 { font-size: 26px; margin: 0 0 8px; }
+.subtitle { font-family: "Segoe UI", Arial, sans-serif; font-size: 13px; color: #6b6660; margin: 0 0 28px; }
+
+.screen[hidden] { display: none; }
+h2 { font-size: 20px; margin: 24px 0 10px; }
+h3 { font-size: 15px; margin: 0 0 6px; }
+p { line-height: 1.6; font-size: 15.5px; margin: 0 0 14px; }
+p.cite { font-family: "Segoe UI", Arial, sans-serif; font-size: 12.5px; color: #6b6660; background: #fff; padding: 12px 14px; border-radius: 6px; border-left: 3px solid #e07b5a; }
+p.small { font-family: "Segoe UI", Arial, sans-serif; font-size: 12px; color: #8a8478; }
+p.condition-note { font-family: "Segoe UI", Arial, sans-serif; font-size: 11.5px; color: #a89f8f; font-style: italic; }
+
+.btn-primary { font-family: "Segoe UI", Arial, sans-serif; background: #e07b5a; color: #fff; border: none; border-radius: 6px; padding: 11px 22px; font-size: 14px; font-weight: 700; cursor: pointer; margin-top: 10px; }
+.btn-primary:disabled { background: #d8d2c8; cursor: not-allowed; }
+
+.choice-row { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 16px; }
+.choice-card { flex: 1; min-width: 220px; background: #fff; border: 2px solid #e2ddd2; border-radius: 8px; padding: 16px; text-align: left; cursor: pointer; font-family: "Segoe UI", Arial, sans-serif; }
+.choice-card:hover { border-color: #e07b5a; }
+.choice-card p { font-family: "Segoe UI", Arial, sans-serif; margin: 0; font-size: 13px; color: #6b6660; }
+
+.survey-note { font-family: "Segoe UI", Arial, sans-serif; font-size: 12.5px; color: #8a8478; margin-top: -6px; }
+.survey-row { margin-bottom: 14px; font-family: "Segoe UI", Arial, sans-serif; }
+.survey-row label { display: block; font-size: 13.5px; margin-bottom: 6px; }
+.survey-scale { display: flex; gap: 6px; }
+.survey-btn { width: 38px; height: 38px; border-radius: 6px; border: 2px solid #e2ddd2; background: #fff; cursor: pointer; font-weight: 700; color: #6b6660; }
+.survey-btn.selected { border-color: #e07b5a; background: #e07b5a; color: #fff; }
+.survey-hint { font-family: "Segoe UI", Arial, sans-serif; font-size: 12px; color: #b5502f; }
+
+.outcome-box { font-family: "Segoe UI", Arial, sans-serif; background: #fff; border-radius: 8px; padding: 14px 16px; margin: 14px 0; border: 1px solid #e2ddd2; }
+.outcome-row { display: flex; justify-content: space-between; font-size: 13.5px; margin-bottom: 6px; }
+.act-badge { font-family: "Segoe UI", Arial, sans-serif; display: inline-block; background: #e07b5a; color: #fff; font-size: 11px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; padding: 3px 10px; border-radius: 20px; margin-bottom: 10px; }
+
+table.summary-table { font-family: "Segoe UI", Arial, sans-serif; width: 100%; border-collapse: collapse; font-size: 13px; margin: 10px 0; }
+table.summary-table th, table.summary-table td { text-align: left; padding: 6px 8px; border-bottom: 1px solid #e2ddd2; }
+
+/* Static-only: a plain numeric bar, not an explorable/animated visual,
+   deliberately less "causal feedback" than the interactive scene, the
+   actual experimental manipulation this control condition tests. */
+.static-bar-track { background: #e2ddd2; border-radius: 5px; height: 10px; width: 100%; margin: 6px 0 14px; font-family: "Segoe UI", Arial, sans-serif; }
+.static-bar-fill { background: #8a8478; height: 100%; border-radius: 5px; }

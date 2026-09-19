@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Okanagan Climate Futures</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div id="scene-container"></div>
+
+<div id="hud">
+  <div id="hud-title">Okanagan Climate Futures</div>
+  <div id="hud-act" hidden></div>
+</div>
+
+<!-- INTRO -->
+<section id="screen-intro" class="screen">
+  <div class="panel">
+    <h1>Okanagan Climate Futures</h1>
+    <p>An interactive exploration of local climate choices and outcomes for three real Kelowna-area places: the Knox Mountain / Glenmore wildland-urban interface, the South East Kelowna agricultural benchlands, and the Okanagan Lake foreshore.</p>
+    <p class="cite">Grounded in real, cited regional climate projections (Pacific Climate Impacts Consortium, in partnership with the North Okanagan, Central Okanagan &amp; Okanagan-Similkameen Regional Districts, <em>Climate Projections for the Okanagan Region</em>, Feb 2020) and Okanagan Lake's real regulated operating band (BC government Okanagan Lake Regulation System factsheet). Every outcome you see is computed from your choices by a deterministic model, not decided by AI.</p>
+    <p class="condition-note" id="condition-note"></p>
+    <button class="btn-primary" id="btn-start">Begin</button>
+  </div>
+</section>
+
+<!-- PRE-SURVEY -->
+<section id="screen-pre-survey" class="screen" hidden>
+  <div class="panel wide">
+    <div id="pre-survey-container"></div>
+    <button class="btn-primary" id="btn-pre-survey-continue" disabled>Continue</button>
+    <p class="survey-hint" id="pre-survey-hint">Answer every question to continue.</p>
+  </div>
+</section>
+
+<!-- HORIZON CHOICE -->
+<section id="screen-horizon" class="screen" hidden>
+  <div class="panel">
+    <h2>Which future are we planning for?</h2>
+    <p>Both options below use the Pacific Climate Impacts Consortium's own real, cited regional projections for the Okanagan (Feb 2020 report), not invented numbers.</p>
+    <div class="choice-row">
+      <button class="choice-card" data-horizon="2050s">
+        <h3>2050s trajectory</h3>
+        <p>~32 days per year above 30&deg;C in valley bottoms (real, cited).</p>
+      </button>
+      <button class="choice-card" data-horizon="2080s">
+        <h3>2080s trajectory</h3>
+        <p>~52-54 days per year above 30&deg;C in valley bottoms (real, cited); the report also notes wildfire risk rises materially once average annual temperature is about 2.5&deg;C higher.</p>
+      </button>
+    </div>
+  </div>
+</section>
+
+<!-- ACT INTRO / CHOICE / OUTCOME (shared template, act-specific content injected) -->
+<section id="screen-act" class="screen" hidden>
+  <div class="panel wide">
+    <div id="act-content"></div>
+  </div>
+</section>
+
+<!-- REGIONAL OUTCOME SUMMARY -->
+<section id="screen-summary" class="screen" hidden>
+  <div class="panel wide">
+    <h2>Regional Outcome</h2>
+    <div id="summary-content"></div>
+    <button class="btn-primary" id="btn-summary-continue">Continue</button>
+  </div>
+</section>
+
+<!-- POST-SURVEY -->
+<section id="screen-post-survey" class="screen" hidden>
+  <div class="panel wide">
+    <div id="post-survey-container"></div>
+    <button class="btn-primary" id="btn-post-survey-continue" disabled>Continue</button>
+    <p class="survey-hint" id="post-survey-hint">Answer every question to continue.</p>
+  </div>
+</section>
+
+<!-- END -->
+<section id="screen-end" class="screen" hidden>
+  <div class="panel">
+    <h2>Thank you</h2>
+    <p>Your responses never leave your browser unless you choose to download them below. There is no server and nothing is uploaded automatically.</p>
+    <button class="btn-primary" id="btn-download">Download my anonymized responses (CSV)</button>
+    <p class="small" id="participant-id-note"></p>
+  </div>
+</section>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="impact_model.js"></script>
+<script src="survey.js"></script>
+<script src="main.js"></script>
+</body>
+</html>
