@@ -3,24 +3,27 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Okanagan Climate Futures</title>
+<title>Vancouver Climate Futures</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
 <div id="scene-container"></div>
+<div id="scene-hint" hidden>Drag to look around &middot; scroll to zoom</div>
+<div id="watch-banner">Watch the city respond&hellip;</div>
 
 <div id="hud">
-  <div id="hud-title">Okanagan Climate Futures</div>
+  <div id="hud-title">Vancouver Climate Futures</div>
   <div id="hud-act" hidden></div>
 </div>
 
 <!-- INTRO -->
-<section id="screen-intro" class="screen">
+<section id="screen-intro" class="screen screen--docked">
   <div class="panel">
-    <h1>Okanagan Climate Futures</h1>
-    <p>An interactive exploration of local climate choices and outcomes for three real Kelowna-area places: the Knox Mountain / Glenmore wildland-urban interface, the South East Kelowna agricultural benchlands, and the Okanagan Lake foreshore.</p>
-    <p class="cite">Grounded in real, cited regional climate projections (Pacific Climate Impacts Consortium, in partnership with the North Okanagan, Central Okanagan &amp; Okanagan-Similkameen Regional Districts, <em>Climate Projections for the Okanagan Region</em>, Feb 2020) and Okanagan Lake's real regulated operating band (BC government Okanagan Lake Regulation System factsheet). Every outcome you see is computed from your choices by a deterministic model, not decided by AI.</p>
+    <button class="dock-handle" data-toggle>&#9660; Hide</button>
+    <h1>Vancouver Climate Futures</h1>
+    <p>An interactive exploration of local climate choices and outcomes for three real Vancouver places: the False Creek foreshore, a lower-tree-canopy neighbourhood like Marpole, and the city's older rental-housing stock.</p>
+    <p class="cite">Grounded in real, cited data: the City of Vancouver's own Coastal Flood Risk Assessment (4.6m flood construction level, ~1m of sea level rise projected by 2100), the real 2021 BC heat dome (619 deaths province-wide, the deadliest weather event in BC history) and its documented ~20&deg;C neighbourhood tree-canopy temperature gap, and the City's real RARA building-retrofit grant program. Every outcome you see is computed from your choices by a deterministic model, not decided by AI.</p>
     <p class="condition-note" id="condition-note"></p>
     <button class="btn-primary" id="btn-start">Begin</button>
   </div>
@@ -30,39 +33,42 @@
 <section id="screen-pre-survey" class="screen" hidden>
   <div class="panel wide">
     <div id="pre-survey-container"></div>
-    <button class="btn-primary" id="btn-pre-survey-continue" disabled>Continue</button>
+    <button class="btn-primary" id="btn-pre-survey-continue">Continue</button>
     <p class="survey-hint" id="pre-survey-hint">Answer every question to continue.</p>
   </div>
 </section>
 
 <!-- HORIZON CHOICE -->
-<section id="screen-horizon" class="screen" hidden>
+<section id="screen-horizon" class="screen screen--docked" hidden>
   <div class="panel">
+    <button class="dock-handle" data-toggle>&#9660; Hide</button>
     <h2>Which future are we planning for?</h2>
-    <p>Both options below use the Pacific Climate Impacts Consortium's own real, cited regional projections for the Okanagan (Feb 2020 report), not invented numbers.</p>
+    <p>Both options below use the City of Vancouver's own real, cited sea-level-rise and heat projections, not invented numbers.</p>
     <div class="choice-row">
       <button class="choice-card" data-horizon="2050s">
         <h3>2050s trajectory</h3>
-        <p>~32 days per year above 30&deg;C in valley bottoms (real, cited).</p>
+        <p>~0.5m of sea level rise (real, cited BC coast projection).</p>
       </button>
-      <button class="choice-card" data-horizon="2080s">
-        <h3>2080s trajectory</h3>
-        <p>~52-54 days per year above 30&deg;C in valley bottoms (real, cited); the report also notes wildfire risk rises materially once average annual temperature is about 2.5&deg;C higher.</p>
+      <button class="choice-card" data-horizon="2100s">
+        <h3>2100 trajectory</h3>
+        <p>~1m of sea level rise, the figure the City's own 4.6m flood construction level is designed against (real, cited).</p>
       </button>
     </div>
   </div>
 </section>
 
 <!-- ACT INTRO / CHOICE / OUTCOME (shared template, act-specific content injected) -->
-<section id="screen-act" class="screen" hidden>
+<section id="screen-act" class="screen screen--docked" hidden>
   <div class="panel wide">
+    <button class="dock-handle" data-toggle>&#9660; Hide</button>
     <div id="act-content"></div>
   </div>
 </section>
 
 <!-- REGIONAL OUTCOME SUMMARY -->
-<section id="screen-summary" class="screen" hidden>
+<section id="screen-summary" class="screen screen--docked" hidden>
   <div class="panel wide">
+    <button class="dock-handle" data-toggle>&#9660; Hide</button>
     <h2>Regional Outcome</h2>
     <div id="summary-content"></div>
     <button class="btn-primary" id="btn-summary-continue">Continue</button>
@@ -73,7 +79,7 @@
 <section id="screen-post-survey" class="screen" hidden>
   <div class="panel wide">
     <div id="post-survey-container"></div>
-    <button class="btn-primary" id="btn-post-survey-continue" disabled>Continue</button>
+    <button class="btn-primary" id="btn-post-survey-continue">Continue</button>
     <p class="survey-hint" id="post-survey-hint">Answer every question to continue.</p>
   </div>
 </section>

@@ -41,7 +41,7 @@ NEP_ITEMS.forEach((item) => { strongPro[item.id] = item.reverse ? 1 : 5; });
 check("scoreNEP: a consistent strong pro-ecological responder scores exactly 5.0", scoreNEP(strongPro) === 5.0);
 
 // Policy score: straightforward mean, hand-checked.
-const policyResponses = { policy_fire: 4, policy_water: 2, policy_shoreline: 3 };
+const policyResponses = { policy_heat: 4, policy_energy: 2, policy_flood: 3 };
 check("scorePolicySupport: mean of [4,2,3] == 3.0 exactly", scorePolicySupport(policyResponses) === 3.0);
 
 // Missing-data handling: an incomplete response set must return null,

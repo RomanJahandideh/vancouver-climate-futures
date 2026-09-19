@@ -1,80 +1,87 @@
 /**
- * Deterministic climate-impact model for the three acts of Okanagan
+ * Deterministic climate-impact model for the three acts of Vancouver
  * Climate Futures. Pure, side-effect-free functions, no randomness, no
  * AI in the loop: every index the player sees is computed here from
- * the player's choices and real, cited regional figures, then only
- * narrated/visualized elsewhere.
+ * the player's choices and real, cited City of Vancouver / provincial
+ * figures, then only narrated/visualized elsewhere.
  *
- * Cited figures (Pacific Climate Impacts Consortium, in partnership
- * with the North Okanagan, Central Okanagan, and Okanagan-Similkameen
- * Regional Districts, "Climate Projections for the Okanagan Region",
- * February 2020, baseline period 1961-1990):
- *   - Summer precipitation: -23% (long-term projection)
- *   - Days per year above 30C, valley bottoms: ~32 in the 2050s,
- *     52-54 in the 2080s
- *   - Regional wildfire risk described as increasing materially if
- *     average annual temperature rises 2.5C by 2050
- * Okanagan Lake's real regulated operating band (BC gov't Okanagan
- * Lake Regulation System factsheet): 340.4m (lowest desirable) to
- * 342.48m (full pool / upper target), both above sea level.
+ * Cited figures:
+ *   - Sea level rise: ~0.5m by 2050, ~1m by 2100 on the BC coast, and
+ *     the City of Vancouver's real coastal Flood Construction Level of
+ *     4.6m (Greater Vancouver Regional District datum), set to protect
+ *     waterfront structures around Burrard Inlet, English Bay, False
+ *     Creek and the Fraser River floodplain through 2100.
+ *     (City of Vancouver Coastal Flood Risk Assessment; "Adapting to
+ *     sea level rise", vancouver.ca/green-vancouver.)
+ *   - The 2021 BC heat dome: 619 deaths province-wide, the deadliest
+ *     weather event in BC history, and a documented urban-heat-island
+ *     gap of roughly 20C between lower-tree-canopy neighbourhoods
+ *     (e.g. Marpole) and higher-canopy ones (e.g. West Vancouver)
+ *     during the event, tied to neighbourhood greenness, not just
+ *     regional weather. (Peer-reviewed analyses of 2021 heat dome
+ *     community deaths in Greater Vancouver.)
+ *   - The City of Vancouver's real RARA grant program ($3.5M) funding
+ *     heat-pump/electrification retrofits for existing market rental
+ *     buildings. (vancouver.ca energy-resources-and-programs page.)
  *
- * This module uses the REAL day-count and precipitation figures
- * directly. It does NOT have a real, source-specific "2050s under low
- * emissions vs 2050s under high emissions" split (the report does not
- * publish one at this granularity), so the two selectable time
- * horizons are the report's own two real, cited horizons, 2050s and
- * 2080s, rather than an invented emissions-scenario label. Every other
- * numeric coefficient below (base risk levels, policy mitigation
- * amounts, scaling factors) is an explicitly illustrative, order-of-
- * magnitude-reasonable placeholder, not a claimed real regional
- * model output, exactly the same "PLACEHOLDER, clearly labeled"
- * discipline as BASE_ELEV_M/SLOPE in vancouver-view-corridor-massing
- * and the carbon/wind proxies in environmental-massing-agents.
+ * This module uses these real, cited figures directly (0.5m/1m sea
+ * level rise, the 4.6m flood construction level). It does NOT have a
+ * source-specific "2050 vs 2100 heat severity" or "energy
+ * vulnerability" figure at this granularity, those two acts' baseline/
+ * horizon/policy coefficients are explicitly illustrative,
+ * order-of-magnitude-reasonable placeholders, not claimed real model
+ * outputs, the same "PLACEHOLDER, clearly labeled" discipline as
+ * BASE_ELEV_M/SLOPE in vancouver-view-corridor-massing and the carbon/
+ * wind proxies in environmental-massing-agents. The heat exposure index
+ * is never framed as, or compared to, the real 2021 death toll; that
+ * figure is cited only as real-world motivation for the act, never
+ * reproduced as a game output.
  */
 
-const HOT_DAYS_BY_HORIZON = { "2050s": 32, "2080s": 53 }; // real, cited (53 = midpoint of the cited 52-54 range)
-const SUMMER_PRECIP_REDUCTION_PCT = { "2050s": 0.6 * 23, "2080s": 23 }; // real -23% cited as the long-term figure; 2050s uses an explicitly interpolated 60% fraction of it, not a separately cited number
-
-const LAKE_FULL_POOL_M = 342.48; // real, BC gov't factsheet
-const LAKE_LOWEST_DESIRABLE_M = 340.4; // real, BC gov't factsheet
+const SEA_LEVEL_RISE_M = { "2050s": 0.5, "2100s": 1.0 }; // real, cited BC coast projections
+const FCL_M = 4.6; // real, City of Vancouver coastal Flood Construction Level (GVRD datum)
+const FALSE_CREEK_BASELINE_M = 2.0; // illustrative low-water reference for the 3D visualization only
 
 function clamp(x, lo, hi) {
   return Math.max(lo, Math.min(hi, x));
 }
 
-/** Act 1: wildfire risk, Knox Mountain / Glenmore wildland-urban interface. */
-function fireRisk(horizon, policy) {
-  const hotDays = HOT_DAYS_BY_HORIZON[horizon];
-  const baseRisk = 35; // illustrative baseline (PLACEHOLDER)
-  const hotDaysFactor = (hotDays / HOT_DAYS_BY_HORIZON["2080s"]) * 40; // scales with the real cited hot-day count
-  const policyMitigation = policy === "proactive" ? 20 : 0; // illustrative effect of fuel thinning / prescribed burns (a real FireSmart BC measure)
-  const index = clamp(baseRisk + hotDaysFactor - policyMitigation, 0, 100);
-  return { index: Math.round(index), hotDays, baseRisk, hotDaysFactor, policyMitigation };
+/** Act 1: coastal flood risk, False Creek foreshore. */
+function floodRisk(horizon, policy) {
+  const seaLevelRiseM = SEA_LEVEL_RISE_M[horizon];
+  const baseRisk = 30; // illustrative baseline (PLACEHOLDER)
+  const seaLevelFactor = (seaLevelRiseM / SEA_LEVEL_RISE_M["2100s"]) * 45; // scales with the real cited sea-level-rise figure
+  const policyMitigation = policy === "proactive" ? 20 : 0; // illustrative effect of coastal green infrastructure / setbacks (the real Sea2City / False Creek Coastal Adaptation Plan approach)
+  const index = clamp(baseRisk + seaLevelFactor - policyMitigation, 0, 100);
+  return { index: Math.round(index), seaLevelRiseM, baseRisk, seaLevelFactor, policyMitigation };
 }
 
-/** Act 2: water/drought stress, South East Kelowna agricultural benchlands. */
-function waterScarcity(horizon, policy) {
-  const precipReductionPct = SUMMER_PRECIP_REDUCTION_PCT[horizon];
-  const baseScarcity = 25; // illustrative baseline (PLACEHOLDER)
-  const precipFactor = precipReductionPct * 1.6; // scales with the real cited summer-precipitation reduction
-  const policyMitigation = policy === "proactive" ? 18 : 0; // illustrative effect of drip-irrigation efficiency upgrades (a real BC Agriculture / Okanagan Basin Water Board adaptation measure)
-  const index = clamp(baseScarcity + precipFactor - policyMitigation, 0, 100);
-  return { index: Math.round(index), precipReductionPct, baseScarcity, precipFactor, policyMitigation };
+/** Act 2: extreme-heat exposure, a lower-tree-canopy neighbourhood (Marpole-type). */
+function heatExposure(horizon, policy) {
+  const baseExposure = 30; // illustrative baseline (PLACEHOLDER)
+  const horizonFactor = horizon === "2100s" ? 35 : 15; // illustrative: further-out horizon assumed more severe
+  const policyMitigation = policy === "proactive" ? 20 : 0; // illustrative effect of tree-canopy/cooling investment, grounded in the real documented canopy-driven temperature gap
+  const index = clamp(baseExposure + horizonFactor - policyMitigation, 0, 100);
+  return { index: Math.round(index), horizonFactor, baseExposure, policyMitigation };
 }
 
-/** Act 3: lake level & shoreline/heat stress, Okanagan Lake foreshore (Downtown to Mission). */
-function shorelineOutlook(horizon, policy) {
-  const hotDays = HOT_DAYS_BY_HORIZON[horizon];
-  const band = LAKE_FULL_POOL_M - LAKE_LOWEST_DESIRABLE_M; // real regulated band, 2.08m
-  const droughtPull = (hotDays / HOT_DAYS_BY_HORIZON["2080s"]) * band * 0.9; // illustrative pull toward the lowest desirable level as heat/demand rise
-  const policyOffset = policy === "proactive" ? band * 0.35 : 0; // illustrative effect of wetland restoration / shoreline setback + earlier reservoir management
-  const typicalLateSummerLevel = clamp(
-    LAKE_FULL_POOL_M - droughtPull + policyOffset,
-    LAKE_LOWEST_DESIRABLE_M - 0.3, // allow a small illustrative excursion below the real "lowest desirable" line under the worst case
-    LAKE_FULL_POOL_M,
-  );
-  const heatExposureIndex = Math.round((hotDays / HOT_DAYS_BY_HORIZON["2080s"]) * 100);
-  return { typicalLateSummerLevel: Math.round(typicalLateSummerLevel * 100) / 100, heatExposureIndex, hotDays };
+/** Act 3: building energy vulnerability, older rental housing stock. */
+function energyVulnerability(horizon, policy) {
+  const baseVulnerability = 40; // illustrative baseline (PLACEHOLDER)
+  const horizonFactor = horizon === "2100s" ? 20 : 10; // illustrative: aging stock further out
+  const policyMitigation = policy === "proactive" ? 25 : 0; // illustrative effect of heat-pump/electrification retrofits (the real RARA program)
+  const index = clamp(baseVulnerability + horizonFactor - policyMitigation, 0, 100);
+  return { index: Math.round(index), horizonFactor, baseVulnerability, policyMitigation };
+}
+
+/** Maps a flood risk index (0-100) to a local False Creek water level
+ * for the 3D visualization, rising toward the real 4.6m Flood
+ * Construction Level as risk increases. The 4.6m ceiling is real and
+ * cited; the low-end baseline (2.0m) is an illustrative reference
+ * chosen only to make the change visible, not a claimed real figure. */
+function floodRiskToWaterLevel(floodIndex) {
+  const t = floodIndex / 100;
+  return Math.round((FALSE_CREEK_BASELINE_M + t * (FCL_M - FALSE_CREEK_BASELINE_M)) * 100) / 100;
 }
 
 /**
@@ -83,17 +90,20 @@ function shorelineOutlook(horizon, policy) {
  * 2.0's per-act "community choice" structure).
  */
 function computeOutcome(choices) {
-  const { horizon, firePolicy, waterPolicy, shorelinePolicy } = choices;
-  const fire = fireRisk(horizon, firePolicy);
-  const water = waterScarcity(horizon, waterPolicy);
-  const shoreline = shorelineOutlook(horizon, shorelinePolicy);
-  const compositeRiskIndex = Math.round((fire.index + water.index + shoreline.heatExposureIndex) / 3);
-  return { horizon, fire, water, shoreline, compositeRiskIndex };
+  const { horizon, floodPolicy, heatPolicy, energyPolicy } = choices;
+  const flood = floodRisk(horizon, floodPolicy);
+  const heat = heatExposure(horizon, heatPolicy);
+  const energy = energyVulnerability(horizon, energyPolicy);
+  const compositeRiskIndex = Math.round((flood.index + heat.index + energy.index) / 3);
+  return {
+    horizon, flood, heat, energy, compositeRiskIndex,
+    falseCreekWaterLevelM: floodRiskToWaterLevel(flood.index),
+  };
 }
 
 if (typeof module !== "undefined" && module.exports) {
   module.exports = {
-    fireRisk, waterScarcity, shorelineOutlook, computeOutcome,
-    HOT_DAYS_BY_HORIZON, SUMMER_PRECIP_REDUCTION_PCT, LAKE_FULL_POOL_M, LAKE_LOWEST_DESIRABLE_M,
+    floodRisk, heatExposure, energyVulnerability, computeOutcome, floodRiskToWaterLevel,
+    SEA_LEVEL_RISE_M, FCL_M, FALSE_CREEK_BASELINE_M,
   };
 }

@@ -3,9 +3,8 @@
 
   // ==========================================================================
   // Condition assignment: real between-subjects design. ?condition=static
-  // in the URL forces the control condition (used by static.html's own link
-  // back here is not used; static.html is a fully separate page). Default is
-  // a real 50/50 random assignment, like a genuine pilot deployment would use.
+  // forces the control condition label only (static.html is the actual
+  // separate control page). Default is a real 50/50 random assignment.
   // ==========================================================================
   var params = new URLSearchParams(window.location.search);
   var condition = params.get("condition") === "static" ? "static" : "interactive";
@@ -43,10 +42,11 @@
     renderer.setSize(window.innerWidth, window.innerHeight);
   });
 
-  // --- manual orbit controls + a target the game can animate toward ---
+  // --- manual orbit controls, active everywhere, the scene is never
+  // covered by a full-screen blocking overlay, only a small docked panel ---
   var camTarget = new THREE.Vector3(0, 3, 0);
   var camTargetGoal = camTarget.clone();
-  var radius = 70, radiusGoal = 70, azimuth = 0.5, elevation = 0.5;
+  var radius = 90, radiusGoal = 90, azimuth = 0.5, elevation = 0.5;
   var dragging = false, lastX = 0, lastY = 0;
 
   function updateCameraPosition() {
@@ -78,36 +78,35 @@
   }
 
   // ==========================================================================
-  // Terrain layout, three real sub-areas laid out along X:
-  //   x ~ -34 : Knox Mountain / Glenmore wildland-urban interface (Act 1, fire)
-  //   x ~   0 : South East Kelowna benchlands (Act 2, water)
-  //   x ~  34 : Okanagan Lake foreshore (Act 3, shoreline)
+  // Terrain layout, three real Vancouver places laid out along X:
+  //   x ~ -34 : a lower-tree-canopy neighbourhood (Marpole-type), Heat Vision
+  //   x ~   0 : older rental-housing blocks, Energy Vision
+  //   x ~  34 : False Creek foreshore, Flood Vision
   // A deterministic, dependency-free "noise" (a small sum of sines) gives the
-  // hillside terrain rolling variation without an external noise library.
+  // terrain gentle variation without an external noise library.
   // ==========================================================================
   function pseudoNoise(x, z) {
     return Math.sin(x * 0.15) * Math.cos(z * 0.12) * 1.6 + Math.sin(x * 0.4 + z * 0.3) * 0.5;
   }
 
-  function buildHillside() {
+  function buildNeighbourhoodGround() {
     var geo = new THREE.PlaneGeometry(26, 40, 24, 24);
     geo.rotateX(-Math.PI / 2);
     var pos = geo.attributes.position;
     for (var i = 0; i < pos.count; i++) {
       var x = pos.getX(i), z = pos.getZ(i);
-      var slope = (z + 20) * 0.22; // rises away from the lake, toward the ridge
-      pos.setY(i, slope + pseudoNoise(x, z) * 0.6);
+      pos.setY(i, 0.6 + pseudoNoise(x, z) * 0.25);
     }
     geo.computeVertexNormals();
-    var mat = new THREE.MeshStandardMaterial({ color: 0x6a5a44, roughness: 1 });
+    var mat = new THREE.MeshStandardMaterial({ color: 0x8a8064, roughness: 1 });
     var mesh = new THREE.Mesh(geo, mat);
     mesh.position.set(-34, 0, -6);
     scene.add(mesh);
     return mesh;
   }
-  var hillsideMesh = buildHillside();
+  buildNeighbourhoodGround();
 
-  function buildBenchland() {
+  function buildRentalBlockGround() {
     var geo = new THREE.PlaneGeometry(26, 34, 4, 4);
     geo.rotateX(-Math.PI / 2);
     var mat = new THREE.MeshStandardMaterial({ color: 0x9c8a5a, roughness: 1 });
@@ -116,9 +115,9 @@
     scene.add(mesh);
     return mesh;
   }
-  buildBenchland();
+  buildRentalBlockGround();
 
-  function buildLakebed() {
+  function buildForeshoreGround() {
     var geo = new THREE.PlaneGeometry(30, 40, 4, 4);
     geo.rotateX(-Math.PI / 2);
     var mat = new THREE.MeshStandardMaterial({ color: 0x8a8064, roughness: 1 });
@@ -127,108 +126,112 @@
     scene.add(mesh);
     return mesh;
   }
-  buildLakebed();
+  buildForeshoreGround();
 
-  // Local vertical scale for the lake: real Okanagan Lake operates in a
-  // 340.4m-342.48m band (2.08m); exaggerated here to a 0-2.6 local-unit
-  // range so the change is visible at this scene's scale, an explicit,
-  // stated vertical exaggeration, the same convention landscape
-  // visualization commonly uses and states plainly rather than implying
-  // a literal 1:1 scale.
-  function lakeLevelToLocalY(levelM) {
-    var t = (levelM - LAKE_LOWEST_DESIRABLE_M) / (LAKE_FULL_POOL_M - LAKE_LOWEST_DESIRABLE_M);
+  // Local vertical scale for False Creek: a real, cited ceiling (the
+  // City's actual 4.6m Flood Construction Level) mapped to a small
+  // local-unit range so the change is visible at this scene's scale, an
+  // explicit, stated vertical exaggeration, the same convention
+  // landscape visualization commonly uses and states plainly rather
+  // than implying a literal 1:1 scale.
+  function waterLevelToLocalY(levelM) {
+    var t = (levelM - FALSE_CREEK_BASELINE_M) / (FCL_M - FALSE_CREEK_BASELINE_M);
     return 0.2 + Math.max(0, Math.min(1, t)) * 2.4;
   }
-  var lakeGeo = new THREE.PlaneGeometry(26, 34);
-  lakeGeo.rotateX(-Math.PI / 2);
-  var lakeMat = new THREE.MeshStandardMaterial({ color: 0x2f6fa8, roughness: 0.35, metalness: 0.05, transparent: true, opacity: 0.92 });
-  var lakeMesh = new THREE.Mesh(lakeGeo, lakeMat);
-  lakeMesh.position.set(34, lakeLevelToLocalY(342.48), -4);
-  scene.add(lakeMesh);
+  var waterGeo = new THREE.PlaneGeometry(26, 34);
+  waterGeo.rotateX(-Math.PI / 2);
+  var waterMat = new THREE.MeshStandardMaterial({ color: 0x2f6fa8, roughness: 0.35, metalness: 0.05, transparent: true, opacity: 0.92 });
+  var waterMesh = new THREE.Mesh(waterGeo, waterMat);
+  waterMesh.position.set(34, waterLevelToLocalY(FALSE_CREEK_BASELINE_M), -4);
+  scene.add(waterMesh);
 
-  // Wetland buffer ring, only shown when the proactive shoreline policy is chosen.
-  var wetlandGeo = new THREE.RingGeometry(13.2, 15.2, 40);
-  wetlandGeo.rotateX(-Math.PI / 2);
-  var wetlandMat = new THREE.MeshStandardMaterial({ color: 0x3d7a4a, roughness: 1 });
-  var wetlandMesh = new THREE.Mesh(wetlandGeo, wetlandMat);
-  wetlandMesh.position.set(34, 0.25, -4);
-  wetlandMesh.visible = false;
-  scene.add(wetlandMesh);
+  // Green shoreline buffer, shown only when the proactive coastal
+  // adaptation policy is chosen (the real Sea2City / False Creek
+  // Coastal Adaptation Plan approach: green infrastructure and
+  // setbacks rather than hard infrastructure alone).
+  var bufferGeo = new THREE.RingGeometry(13.2, 15.2, 40);
+  bufferGeo.rotateX(-Math.PI / 2);
+  var bufferMat = new THREE.MeshStandardMaterial({ color: 0x3d7a4a, roughness: 1 });
+  var bufferMesh = new THREE.Mesh(bufferGeo, bufferMat);
+  bufferMesh.position.set(34, 0.25, -4);
+  bufferMesh.visible = false;
+  scene.add(bufferMesh);
 
-  // Town cluster near the hillside base (Kelowna's urban edge).
-  (function buildTown() {
+  // A generic low-rise building cluster near the neighbourhood ground.
+  (function buildHouses() {
     var group = new THREE.Group();
     for (var i = 0; i < 14; i++) {
       var w = 1.2 + Math.random() * 1.2, h = 1.5 + Math.random() * 2.5, d = 1.2 + Math.random() * 1.2;
       var box = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), new THREE.MeshStandardMaterial({ color: 0xd8d2c4, roughness: 0.9 }));
-      box.position.set(-34 + (Math.random() - 0.5) * 16, h / 2, 12 + (Math.random() - 0.5) * 6);
+      box.position.set(-34 + (Math.random() - 0.5) * 16, h / 2 + 0.6, 12 + (Math.random() - 0.5) * 6);
       group.add(box);
     }
     scene.add(group);
   })();
 
-  // --- forest instances (Act 1) ---
-  var forestGroup = new THREE.Group();
-  scene.add(forestGroup);
-  function rebuildForest(fireResult, policy) {
-    while (forestGroup.children.length) forestGroup.remove(forestGroup.children[0]);
-    // proactive fuel management = visibly thinned (fewer, more evenly
-    // spaced trees); status_quo = dense, unmanaged fuel load. This is the
-    // real visual signature of FireSmart-style fuel thinning.
-    var count = policy === "proactive" ? 70 : 140;
-    var stress = fireResult.index / 100; // 0 healthy green -> 1 stressed/grey
+  // --- street trees / canopy instances (Act 1: Heat Vision) ---
+  var canopyGroup = new THREE.Group();
+  scene.add(canopyGroup);
+  function rebuildCanopy(heatResult, policy) {
+    while (canopyGroup.children.length) canopyGroup.remove(canopyGroup.children[0]);
+    // proactive tree-canopy investment = visibly more, denser canopy;
+    // status quo = the sparser canopy documented in lower-canopy
+    // neighbourhoods like Marpole during the 2021 heat dome.
+    var count = policy === "proactive" ? 140 : 55;
+    var stress = heatResult.index / 100; // 0 cool/green -> 1 hot/hazy
     var green = new THREE.Color(0x2f6b3a);
-    var stressedColor = new THREE.Color(0x7a6a4a);
+    var stressedColor = new THREE.Color(0x8a7a55);
     var col = green.clone().lerp(stressedColor, stress);
-    var coneMat = new THREE.MeshStandardMaterial({ color: col, roughness: 1 });
-    var coneGeo = new THREE.ConeGeometry(0.9, 3, 6);
-    var inst = new THREE.InstancedMesh(coneGeo, coneMat, count);
+    var canopyMat = new THREE.MeshStandardMaterial({ color: col, roughness: 1 });
+    var canopyGeo = new THREE.ConeGeometry(0.9, 3, 6);
+    var inst = new THREE.InstancedMesh(canopyGeo, canopyMat, count);
     var m = new THREE.Matrix4();
     for (var i = 0; i < count; i++) {
       var x = (Math.random() - 0.5) * 24;
       var z = -20 + Math.random() * 34;
-      var slope = (z + 20) * 0.22 + pseudoNoise(x, z) * 0.6;
-      m.makeTranslation(-34 + x, slope + 1.5, -6 + z);
+      m.makeTranslation(-34 + x, 0.6 + pseudoNoise(x, z) * 0.25 + 1.5, -6 + z);
       inst.setMatrixAt(i, m);
     }
-    forestGroup.add(inst);
+    canopyGroup.add(inst);
 
-    // smoke/haze overlay, opacity scales directly with the computed fire risk index
+    // heat-shimmer haze overlay, opacity scales directly with the computed heat exposure index
     var hazeGeo = new THREE.PlaneGeometry(30, 40);
     hazeGeo.rotateX(-Math.PI / 2);
-    var hazeMat = new THREE.MeshBasicMaterial({ color: 0xb8ada0, transparent: true, opacity: stress * 0.45, depthWrite: false });
+    var hazeMat = new THREE.MeshBasicMaterial({ color: 0xe8c99a, transparent: true, opacity: stress * 0.4, depthWrite: false });
     var haze = new THREE.Mesh(hazeGeo, hazeMat);
-    haze.position.set(-34, 9 + stress * 4, -6);
-    forestGroup.add(haze);
+    haze.position.set(-34, 9 + stress * 3, -6);
+    canopyGroup.add(haze);
   }
-  rebuildForest({ index: 35 }, "status_quo"); // initial neutral state before any choice
+  rebuildCanopy({ index: 30 }, "status_quo"); // initial neutral state before any choice
 
-  // --- vineyard row instances (Act 2) ---
-  var vineGroup = new THREE.Group();
-  scene.add(vineGroup);
-  function rebuildVineyard(waterResult) {
-    while (vineGroup.children.length) vineGroup.remove(vineGroup.children[0]);
-    var stress = waterResult.index / 100;
-    var healthy = new THREE.Color(0x4a8a3f);
-    var stressed = new THREE.Color(0xa08a3a);
-    var col = healthy.clone().lerp(stressed, stress);
-    var rowMat = new THREE.MeshStandardMaterial({ color: col, roughness: 1 });
-    var rowGeo = new THREE.BoxGeometry(0.5, 0.6, 20);
-    var rows = 16;
-    var inst = new THREE.InstancedMesh(rowGeo, rowMat, rows);
+  // --- rental-housing block instances (Act 2: Energy Vision) ---
+  var blocksGroup = new THREE.Group();
+  scene.add(blocksGroup);
+  function rebuildBlocks(energyResult) {
+    while (blocksGroup.children.length) blocksGroup.remove(blocksGroup.children[0]);
+    var vulnerability = energyResult.index / 100;
+    var retrofitted = new THREE.Color(0xd9a441); // warm, retrofitted/electrified
+    var vulnerable = new THREE.Color(0x8a8a90); // dull grey, un-retrofitted
+    var col = retrofitted.clone().lerp(vulnerable, vulnerability);
+    var rowMat = new THREE.MeshStandardMaterial({ color: col, roughness: 0.85 });
+    var rowGeo = new THREE.BoxGeometry(1.6, 2.4, 3.2);
+    var count = 16;
+    var inst = new THREE.InstancedMesh(rowGeo, rowMat, count);
     var m = new THREE.Matrix4();
-    for (var i = 0; i < rows; i++) {
-      var x = -11 + i * 1.45;
-      m.makeTranslation(x, 0.7, -4);
+    for (var i = 0; i < count; i++) {
+      var col_i = i % 4, row_i = Math.floor(i / 4);
+      var x = -10 + col_i * 6.5;
+      var z = -12 + row_i * 8;
+      m.makeTranslation(x, 1.6, z);
       inst.setMatrixAt(i, m);
     }
-    vineGroup.add(inst);
+    blocksGroup.add(inst);
   }
-  rebuildVineyard({ index: 25 });
+  rebuildBlocks({ index: 40 });
 
-  function updateShoreline(shorelineResult, policy) {
-    lakeMesh.position.y = lakeLevelToLocalY(shorelineResult.typicalLateSummerLevel);
-    wetlandMesh.visible = policy === "proactive";
+  function updateForeshore(floodResult, waterLevelM, policy) {
+    waterMesh.position.y = waterLevelToLocalY(waterLevelM);
+    bufferMesh.visible = policy === "proactive";
   }
 
   function animate() {
@@ -238,27 +241,78 @@
     updateCameraPosition();
     renderer.render(scene, camera);
   }
-  focusOn(0, 0, 90);
+  focusOn(0, 0, 110);
   animate();
 
-  // impact_model.js's functions (fireRisk, waterScarcity, shorelineOutlook,
-  // computeOutcome) and constants (LAKE_FULL_POOL_M, LAKE_LOWEST_DESIRABLE_M)
-  // are already plain globals here: its module.exports guard only applies
-  // under Node, so loading it as a <script> tag leaves them directly usable
-  // without any wrapper object, used directly by name throughout this file.
+  // impact_model.js's functions and constants (floodRisk, heatExposure,
+  // energyVulnerability, computeOutcome, floodRiskToWaterLevel, FCL_M,
+  // FALSE_CREEK_BASELINE_M) are already plain globals here, its
+  // module.exports guard only applies under Node.
+
+  // ==========================================================================
+  // Docked-panel UI: the 3D scene is never covered by a blocking overlay.
+  // Only the panel itself captures clicks; the rest of the viewport stays
+  // draggable. A small handle lets the player manually collapse the panel
+  // to see the full scene, and every act's choice briefly auto-collapses
+  // the panel so the visual consequence is actually seen happening, not
+  // just reported in text.
+  // ==========================================================================
+  var sceneHint = document.getElementById("scene-hint");
+  var watchBanner = document.getElementById("watch-banner");
+
+  function updateSceneHintVisibility() {
+    var anyDockedOpen = Array.prototype.some.call(document.querySelectorAll(".screen--docked"), function (el) {
+      return !el.hidden;
+    });
+    sceneHint.hidden = !anyDockedOpen;
+  }
+
+  document.querySelectorAll(".screen--docked .dock-handle").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var screenEl = btn.closest(".screen--docked");
+      var collapsed = screenEl.classList.toggle("collapsed");
+      btn.innerHTML = collapsed ? "&#9650; Show" : "&#9660; Hide";
+    });
+  });
+
+  function collapseDocked(screenEl) {
+    screenEl.classList.add("collapsed");
+    var handle = screenEl.querySelector(".dock-handle");
+    if (handle) handle.innerHTML = "&#9650; Show";
+  }
+  function expandDocked(screenEl) {
+    screenEl.classList.remove("collapsed");
+    var handle = screenEl.querySelector(".dock-handle");
+    if (handle) handle.innerHTML = "&#9660; Hide";
+  }
+
+  function watchSceneRespond(callback) {
+    var actScreen = document.getElementById("screen-act");
+    collapseDocked(actScreen);
+    watchBanner.classList.add("visible");
+    setTimeout(function () {
+      watchBanner.classList.remove("visible");
+      expandDocked(actScreen);
+      callback();
+    }, 1600);
+  }
 
   // ==========================================================================
   // Game state machine
   // ==========================================================================
   var state = {
     horizon: null,
-    firePolicy: null, waterPolicy: null, shorelinePolicy: null,
+    floodPolicy: null, heatPolicy: null, energyPolicy: null,
     pre: null, post: null,
   };
 
   function show(id) {
-    document.querySelectorAll(".screen").forEach(function (el) { el.hidden = true; });
-    document.getElementById(id).hidden = false;
+    document.querySelectorAll(".screen").forEach(function (el) { el.hidden = true; el.classList.remove("collapsed"); });
+    var target = document.getElementById(id);
+    target.hidden = false;
+    var handle = target.querySelector(".dock-handle");
+    if (handle) handle.innerHTML = "&#9660; Hide";
+    updateSceneHintVisibility();
   }
 
   var hudAct = document.getElementById("hud-act");
@@ -273,110 +327,144 @@
     wireSurveyCompletion("pre-survey-container", "btn-pre-survey-continue", "pre-survey-hint");
   });
 
+  // The Continue button is ALWAYS clickable (never silently disabled):
+  // clicking it while incomplete visibly highlights every unanswered
+  // question and scrolls to the first one, rather than doing nothing.
   function wireSurveyCompletion(containerId, btnId, hintId) {
     var container = document.getElementById(containerId);
     var btn = document.getElementById(btnId);
     var hint = document.getElementById(hintId);
-    container.addEventListener("click", function () {
+    hint.style.visibility = "hidden";
+
+    function clearMissingHighlights() {
+      container.querySelectorAll(".survey-row.missing").forEach(function (row) { row.classList.remove("missing"); });
+    }
+
+    container.addEventListener("click", function (e) {
+      if (e.target.classList.contains("survey-btn")) {
+        e.target.closest(".survey-row").classList.remove("missing");
+      }
+    });
+
+    btn.addEventListener("click", function () {
       var responses = collectResponses(container);
-      var complete = isComplete(responses);
-      btn.disabled = !complete;
-      hint.style.visibility = complete ? "hidden" : "visible";
+      var missing = missingItemIds(responses);
+      if (missing.length > 0) {
+        clearMissingHighlights();
+        missing.forEach(function (id) {
+          var btnEl = container.querySelector('.survey-btn[data-item="' + id + '"]');
+          if (btnEl) btnEl.closest(".survey-row").classList.add("missing");
+        });
+        hint.textContent = missing.length + " question" + (missing.length > 1 ? "s" : "") + " still need an answer, highlighted below.";
+        hint.style.visibility = "visible";
+        var firstMissing = container.querySelector(".survey-row.missing");
+        if (firstMissing) firstMissing.scrollIntoView({ behavior: "smooth", block: "center" });
+        return;
+      }
+      hint.style.visibility = "hidden";
+      onSurveyComplete[btnId](responses);
     });
   }
 
-  document.getElementById("btn-pre-survey-continue").addEventListener("click", function () {
-    state.pre = collectResponses(document.getElementById("pre-survey-container"));
+  var onSurveyComplete = {};
+
+  onSurveyComplete["btn-pre-survey-continue"] = function (responses) {
+    state.pre = responses;
     show("screen-horizon");
-  });
+  };
 
   document.querySelectorAll("#screen-horizon .choice-card").forEach(function (btn) {
-    btn.addEventListener("click", function () {
-      state.horizon = btn.dataset.horizon;
-      startAct1();
-    });
+    btn.addEventListener("click", function () { state.horizon = btn.dataset.horizon; startAct1(); });
   });
 
-  // --- Act 1: Fire Vision ---
+  // --- Act 1: Heat Vision ---
   function startAct1() {
-    setHudAct("Act 1 / 3 — Fire Vision");
+    setHudAct("Act 1 / 3 — Heat Vision");
     focusOn(-34, -6, 55);
     var content = document.getElementById("act-content");
     content.innerHTML =
-      '<div class="act-badge">Fire Vision</div>' +
-      "<h2>Knox Mountain &amp; Glenmore, Kelowna</h2>" +
-      "<p>This wildland-urban interface sits where Kelowna's neighbourhoods meet forested slopes. Hotter, drier summers raise wildfire risk here directly: the regional report ties material increases in wildfire risk to roughly 2.5&deg;C of average annual warming by 2050.</p>" +
-      "<div class=\"choice-row\">" +
-      '<button class="choice-card" data-policy="status_quo"><h3>Status quo</h3><p>No new investment in fuel management.</p></button>' +
-      '<button class="choice-card" data-policy="proactive"><h3>Proactive fuel management</h3><p>Invest in prescribed burns and fuel thinning near the urban edge (a real FireSmart BC measure).</p></button>' +
+      '<div class="act-badge">Heat Vision</div>' +
+      "<h2>A lower-canopy Vancouver neighbourhood</h2>" +
+      "<p>The 2021 BC heat dome killed 619 people province-wide, the deadliest weather event in BC history, and researchers found real, documented temperature gaps of roughly 20°C between lower-tree-canopy neighbourhoods and higher-canopy ones during the event, tied directly to neighbourhood greenness.</p>" +
+      '<div class="choice-row">' +
+      '<button class="choice-card" data-policy="status_quo"><h3>Status quo</h3><p>No new investment in tree canopy or cooling infrastructure.</p></button>' +
+      '<button class="choice-card" data-policy="proactive"><h3>Tree canopy &amp; cooling investment</h3><p>Expand street trees and cooling infrastructure in this neighbourhood.</p></button>' +
       "</div>";
     show("screen-act");
     content.querySelectorAll(".choice-card").forEach(function (btn) {
       btn.addEventListener("click", function () {
-        state.firePolicy = btn.dataset.policy;
-        var result = fireRisk(state.horizon, state.firePolicy);
-        rebuildForest(result, state.firePolicy);
-        showActOutcome("Fire Vision", [
-          ["Wildfire risk index", result.index + " / 100"],
-          ["Hot days/year (≥30°C) used", result.hotDays + " (real, cited)"],
-          ["Fuel management effect", result.policyMitigation > 0 ? "-" + result.policyMitigation + " points" : "none"],
-        ], startAct2);
+        state.heatPolicy = btn.dataset.policy;
+        var result = heatExposure(state.horizon, state.heatPolicy);
+        watchSceneRespond(function () {
+          rebuildCanopy(result, state.heatPolicy);
+          showActOutcome("Heat Vision", [
+            ["Heat exposure index", result.index + " / 100"],
+            ["Horizon severity factor used", "+" + result.horizonFactor + " points (illustrative)"],
+            ["Canopy/cooling investment effect", result.policyMitigation > 0 ? "-" + result.policyMitigation + " points" : "none"],
+          ], startAct2);
+        });
       });
     });
   }
 
-  // --- Act 2: Water Vision ---
+  // --- Act 2: Energy Vision ---
   function startAct2() {
-    setHudAct("Act 2 / 3 — Water Vision");
+    setHudAct("Act 2 / 3 — Energy Vision");
     focusOn(0, -4, 55);
     var content = document.getElementById("act-content");
     content.innerHTML =
-      '<div class="act-badge">Water Vision</div>' +
-      "<h2>South East Kelowna Benchlands</h2>" +
-      "<p>These orchard and vineyard benchlands depend on summer irrigation. The regional report projects 23% less summer precipitation, a direct water-supply pressure on agriculture here.</p>" +
-      "<div class=\"choice-row\">" +
-      '<button class="choice-card" data-policy="status_quo"><h3>Status quo</h3><p>No new investment in irrigation efficiency.</p></button>' +
-      '<button class="choice-card" data-policy="proactive"><h3>Drip-irrigation efficiency upgrades</h3><p>Invest in efficient irrigation (a real BC Agriculture / Okanagan Basin Water Board adaptation measure).</p></button>' +
+      '<div class="act-badge">Energy Vision</div>' +
+      "<h2>Older rental-housing blocks</h2>" +
+      "<p>Much of Vancouver's existing rental housing stock relies on aging, emissions-heavy heating with no cooling at all, a real vulnerability during extreme heat. The City's real RARA program funds heat-pump and electrification retrofits for market rental buildings.</p>" +
+      '<div class="choice-row">' +
+      '<button class="choice-card" data-policy="status_quo"><h3>Status quo</h3><p>No new investment in building retrofits.</p></button>' +
+      '<button class="choice-card" data-policy="proactive"><h3>Heat-pump retrofit investment</h3><p>Fund heat-pump/electrification retrofits (the real City of Vancouver RARA program).</p></button>' +
       "</div>";
     show("screen-act");
     content.querySelectorAll(".choice-card").forEach(function (btn) {
       btn.addEventListener("click", function () {
-        state.waterPolicy = btn.dataset.policy;
-        var result = waterScarcity(state.horizon, state.waterPolicy);
-        rebuildVineyard(result);
-        showActOutcome("Water Vision", [
-          ["Water scarcity index", result.index + " / 100"],
-          ["Summer precipitation reduction used", "-" + result.precipReductionPct.toFixed(1) + "% (real, cited)"],
-          ["Irrigation efficiency effect", result.policyMitigation > 0 ? "-" + result.policyMitigation + " points" : "none"],
-        ], startAct3);
+        state.energyPolicy = btn.dataset.policy;
+        var result = energyVulnerability(state.horizon, state.energyPolicy);
+        watchSceneRespond(function () {
+          rebuildBlocks(result);
+          showActOutcome("Energy Vision", [
+            ["Building energy vulnerability index", result.index + " / 100"],
+            ["Horizon severity factor used", "+" + result.horizonFactor + " points (illustrative)"],
+            ["Retrofit investment effect", result.policyMitigation > 0 ? "-" + result.policyMitigation + " points" : "none"],
+          ], startAct3);
+        });
       });
     });
   }
 
-  // --- Act 3: Shoreline Vision ---
+  // --- Act 3: Flood Vision ---
   function startAct3() {
-    setHudAct("Act 3 / 3 — Shoreline Vision");
+    setHudAct("Act 3 / 3 — Flood Vision");
     focusOn(34, -4, 55);
     var content = document.getElementById("act-content");
     content.innerHTML =
-      '<div class="act-badge">Shoreline Vision</div>' +
-      "<h2>Okanagan Lake Foreshore, Downtown to Mission</h2>" +
-      "<p>Okanagan Lake is managed within a real regulated band, 340.4m (lowest desirable) to 342.48m (full pool). Hotter summers and higher demand pull typical late-summer levels toward the lower end of that band.</p>" +
-      "<div class=\"choice-row\">" +
-      '<button class="choice-card" data-policy="status_quo"><h3>Status quo</h3><p>Hard shoreline infrastructure, no new wetland investment.</p></button>' +
-      '<button class="choice-card" data-policy="proactive"><h3>Wetland restoration &amp; setbacks</h3><p>Restore shoreline wetlands and set back new development.</p></button>' +
+      '<div class="act-badge">Flood Vision</div>' +
+      "<h2>False Creek foreshore</h2>" +
+      "<p>The City of Vancouver's real coastal Flood Construction Level is 4.6m, set to protect waterfront structures through 2100 against a real, cited ~1m of sea level rise. False Creek is one of the areas the City's own coastal adaptation planning (Sea2City) is actively working through right now.</p>" +
+      '<div class="choice-row">' +
+      '<button class="choice-card" data-policy="status_quo"><h3>Status quo</h3><p>Hard shoreline infrastructure, no new green adaptation investment.</p></button>' +
+      '<button class="choice-card" data-policy="proactive"><h3>Coastal green infrastructure</h3><p>Invest in green infrastructure and setbacks (the real Sea2City / False Creek Coastal Adaptation Plan approach).</p></button>' +
       "</div>";
     show("screen-act");
     content.querySelectorAll(".choice-card").forEach(function (btn) {
       btn.addEventListener("click", function () {
-        state.shorelinePolicy = btn.dataset.policy;
-        var result = shorelineOutlook(state.horizon, state.shorelinePolicy);
-        updateShoreline(result, state.shorelinePolicy);
-        showActOutcome("Shoreline Vision", [
-          ["Typical late-summer lake level", result.typicalLateSummerLevel + " m (real regulated band: 340.4–342.48 m)"],
-          ["Heat exposure index", result.heatExposureIndex + " / 100"],
-          ["Wetland/setback effect", state.shorelinePolicy === "proactive" ? "shoreline buffer visible on the map" : "none"],
-        ], showSummary);
+        state.floodPolicy = btn.dataset.policy;
+        var result = floodRisk(state.horizon, state.floodPolicy);
+        var waterLevelM = floodRiskToWaterLevel(result.index);
+        watchSceneRespond(function () {
+          updateForeshore(result, waterLevelM, state.floodPolicy);
+          showActOutcome("Flood Vision", [
+            ["Coastal flood risk index", result.index + " / 100"],
+            ["Sea level rise used", result.seaLevelRiseM + " m (real, cited)"],
+            ["Real Flood Construction Level", FCL_M + " m (City of Vancouver, cited)"],
+            ["Green infrastructure effect", result.policyMitigation > 0 ? "-" + result.policyMitigation + " points" : "none"],
+          ], showSummary);
+        });
       });
     });
   }
@@ -401,18 +489,18 @@
   // --- Regional outcome summary ---
   function showSummary() {
     setHudAct("Regional Outcome");
-    focusOn(0, -2, 110);
+    focusOn(0, -2, 120);
     var outcome = computeOutcome({
-      horizon: state.horizon, firePolicy: state.firePolicy,
-      waterPolicy: state.waterPolicy, shorelinePolicy: state.shorelinePolicy,
+      horizon: state.horizon, floodPolicy: state.floodPolicy,
+      heatPolicy: state.heatPolicy, energyPolicy: state.energyPolicy,
     });
     state.outcome = outcome;
     var html =
-      "<p>Your choices, computed together across the whole region:</p>" +
+      "<p>Your choices, computed together across the whole city:</p>" +
       "<table class=\"summary-table\"><tr><th>Act</th><th>Choice</th><th>Index</th></tr>" +
-      "<tr><td>Fire Vision</td><td>" + state.firePolicy + "</td><td>" + outcome.fire.index + " / 100</td></tr>" +
-      "<tr><td>Water Vision</td><td>" + state.waterPolicy + "</td><td>" + outcome.water.index + " / 100</td></tr>" +
-      "<tr><td>Shoreline Vision</td><td>" + state.shorelinePolicy + "</td><td>" + outcome.shoreline.typicalLateSummerLevel + " m</td></tr>" +
+      "<tr><td>Heat Vision</td><td>" + state.heatPolicy + "</td><td>" + outcome.heat.index + " / 100</td></tr>" +
+      "<tr><td>Energy Vision</td><td>" + state.energyPolicy + "</td><td>" + outcome.energy.index + " / 100</td></tr>" +
+      "<tr><td>Flood Vision</td><td>" + state.floodPolicy + "</td><td>" + outcome.flood.index + " / 100</td></tr>" +
       "</table>" +
       "<p><b>Composite regional risk index: " + outcome.compositeRiskIndex + " / 100</b> (horizon: " + state.horizon + ")</p>";
     document.getElementById("summary-content").innerHTML = html;
@@ -426,22 +514,22 @@
     wireSurveyCompletion("post-survey-container", "btn-post-survey-continue", "post-survey-hint");
   });
 
-  document.getElementById("btn-post-survey-continue").addEventListener("click", function () {
-    state.post = collectResponses(document.getElementById("post-survey-container"));
+  onSurveyComplete["btn-post-survey-continue"] = function (responses) {
+    state.post = responses;
     finish();
-  });
+  };
 
   function finish() {
     var record = {
       participant_id: participantId, condition: condition, timestamp: new Date().toISOString(),
       pre_nep_score: scoreNEP(state.pre), post_nep_score: scoreNEP(state.post),
       pre_policy_score: scorePolicySupport(state.pre), post_policy_score: scorePolicySupport(state.post),
-      horizon: state.horizon, fire_policy: state.firePolicy, water_policy: state.waterPolicy, shoreline_policy: state.shorelinePolicy,
-      fire_risk_index: state.outcome.fire.index, water_scarcity_index: state.outcome.water.index,
-      shoreline_level_m: state.outcome.shoreline.typicalLateSummerLevel, composite_risk_index: state.outcome.compositeRiskIndex,
+      horizon: state.horizon, flood_policy: state.floodPolicy, heat_policy: state.heatPolicy, energy_policy: state.energyPolicy,
+      flood_risk_index: state.outcome.flood.index, heat_exposure_index: state.outcome.heat.index,
+      energy_vulnerability_index: state.outcome.energy.index, composite_risk_index: state.outcome.compositeRiskIndex,
     };
     try {
-      var key = "okanagan_climate_futures_" + participantId;
+      var key = "vancouver_climate_futures_" + participantId;
       window.localStorage.setItem(key, JSON.stringify(record));
     } catch (e) { /* localStorage unavailable (private mode, etc.); export still works from memory below */ }
 
@@ -452,7 +540,7 @@
       var url = URL.createObjectURL(blob);
       var a = document.createElement("a");
       a.href = url;
-      a.download = "okanagan_climate_futures_" + participantId + ".csv";
+      a.download = "vancouver_climate_futures_" + participantId + ".csv";
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);

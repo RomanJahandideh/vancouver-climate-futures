@@ -7,7 +7,7 @@
     "You are in the STATIC (control) condition (participant " + participantId + "). This page presents the same " +
     "real facts and choices as the interactive game, as static reading with no explorable 3D scene.";
 
-  var state = { horizon: null, firePolicy: null, waterPolicy: null, shorelinePolicy: null, pre: null, post: null };
+  var state = { horizon: null, floodPolicy: null, heatPolicy: null, energyPolicy: null, pre: null, post: null };
 
   function show(id) {
     document.querySelectorAll(".screen").forEach(function (el) { el.hidden = true; });
@@ -15,55 +15,71 @@
     window.scrollTo(0, 0);
   }
 
-  function wireSurveyCompletion(containerId, btnId, hintId) {
+  // The Continue button is ALWAYS clickable: clicking while incomplete
+  // visibly highlights every unanswered question rather than doing
+  // nothing, the same forgiving pattern as the interactive version.
+  function wireSurveyCompletion(containerId, btnId, hintId, onComplete) {
     var container = document.getElementById(containerId);
     var btn = document.getElementById(btnId);
     var hint = document.getElementById(hintId);
-    container.addEventListener("click", function () {
-      var complete = isComplete(collectResponses(container));
-      btn.disabled = !complete;
-      hint.style.visibility = complete ? "hidden" : "visible";
+    container.addEventListener("click", function (e) {
+      if (e.target.classList.contains("survey-btn")) e.target.closest(".survey-row").classList.remove("missing");
     });
-  }
-
-  function bar(value100) {
-    return '<div class="static-bar-track"><div class="static-bar-fill" style="width:' + value100 + '%"></div></div>';
+    btn.addEventListener("click", function () {
+      var responses = collectResponses(container);
+      var missing = missingItemIds(responses);
+      if (missing.length > 0) {
+        container.querySelectorAll(".survey-row.missing").forEach(function (row) { row.classList.remove("missing"); });
+        missing.forEach(function (id) {
+          var el = container.querySelector('.survey-btn[data-item="' + id + '"]');
+          if (el) el.closest(".survey-row").classList.add("missing");
+        });
+        hint.textContent = missing.length + " question" + (missing.length > 1 ? "s" : "") + " still need an answer, highlighted below.";
+        var first = container.querySelector(".survey-row.missing");
+        if (first) first.scrollIntoView({ behavior: "smooth", block: "center" });
+        return;
+      }
+      hint.textContent = "";
+      onComplete(responses);
+    });
   }
 
   document.getElementById("btn-start").addEventListener("click", function () {
     show("screen-pre-survey");
     renderSurvey(document.getElementById("pre-survey-container"), "pre");
-    wireSurveyCompletion("pre-survey-container", "btn-pre-survey-continue", "pre-survey-hint");
-  });
-
-  document.getElementById("btn-pre-survey-continue").addEventListener("click", function () {
-    state.pre = collectResponses(document.getElementById("pre-survey-container"));
-    show("screen-horizon");
+    wireSurveyCompletion("pre-survey-container", "btn-pre-survey-continue", "pre-survey-hint", function (responses) {
+      state.pre = responses;
+      show("screen-horizon");
+    });
   });
 
   document.querySelectorAll("#screen-horizon .choice-card").forEach(function (btn) {
     btn.addEventListener("click", function () { state.horizon = btn.dataset.horizon; startAct1(); });
   });
 
+  function bar(value100) {
+    return '<div class="static-bar-track"><div class="static-bar-fill" style="width:' + value100 + '%"></div></div>';
+  }
+
   function startAct1() {
     var content = document.getElementById("act-content");
     content.innerHTML =
-      '<div class="act-badge">Fire Vision</div>' +
-      "<h2>Knox Mountain &amp; Glenmore, Kelowna</h2>" +
-      "<p>This wildland-urban interface sits where Kelowna's neighbourhoods meet forested slopes. Hotter, drier summers raise wildfire risk here directly: the regional report ties material increases in wildfire risk to roughly 2.5&deg;C of average annual warming by 2050.</p>" +
+      '<div class="act-badge">Heat Vision</div>' +
+      "<h2>A lower-canopy Vancouver neighbourhood</h2>" +
+      "<p>The 2021 BC heat dome killed 619 people province-wide, the deadliest weather event in BC history, and researchers found real, documented temperature gaps of roughly 20°C between lower-tree-canopy neighbourhoods and higher-canopy ones during the event, tied directly to neighbourhood greenness.</p>" +
       '<div class="choice-row">' +
-      '<button class="choice-card" data-policy="status_quo"><h3>Status quo</h3><p>No new investment in fuel management.</p></button>' +
-      '<button class="choice-card" data-policy="proactive"><h3>Proactive fuel management</h3><p>Invest in prescribed burns and fuel thinning near the urban edge (a real FireSmart BC measure).</p></button>' +
+      '<button class="choice-card" data-policy="status_quo"><h3>Status quo</h3><p>No new investment in tree canopy or cooling infrastructure.</p></button>' +
+      '<button class="choice-card" data-policy="proactive"><h3>Tree canopy &amp; cooling investment</h3><p>Expand street trees and cooling infrastructure in this neighbourhood.</p></button>' +
       "</div>";
     show("screen-act");
     content.querySelectorAll(".choice-card").forEach(function (btn) {
       btn.addEventListener("click", function () {
-        state.firePolicy = btn.dataset.policy;
-        var result = fireRisk(state.horizon, state.firePolicy);
-        showActOutcome("Fire Vision", result.index, [
-          ["Wildfire risk index", result.index + " / 100"],
-          ["Hot days/year (≥30°C) used", result.hotDays + " (real, cited)"],
-          ["Fuel management effect", result.policyMitigation > 0 ? "-" + result.policyMitigation + " points" : "none"],
+        state.heatPolicy = btn.dataset.policy;
+        var result = heatExposure(state.horizon, state.heatPolicy);
+        showActOutcome("Heat Vision", result.index, [
+          ["Heat exposure index", result.index + " / 100"],
+          ["Horizon severity factor used", "+" + result.horizonFactor + " points (illustrative)"],
+          ["Canopy/cooling investment effect", result.policyMitigation > 0 ? "-" + result.policyMitigation + " points" : "none"],
         ], startAct2);
       });
     });
@@ -72,22 +88,22 @@
   function startAct2() {
     var content = document.getElementById("act-content");
     content.innerHTML =
-      '<div class="act-badge">Water Vision</div>' +
-      "<h2>South East Kelowna Benchlands</h2>" +
-      "<p>These orchard and vineyard benchlands depend on summer irrigation. The regional report projects 23% less summer precipitation, a direct water-supply pressure on agriculture here.</p>" +
+      '<div class="act-badge">Energy Vision</div>' +
+      "<h2>Older rental-housing blocks</h2>" +
+      "<p>Much of Vancouver's existing rental housing stock relies on aging, emissions-heavy heating with no cooling at all, a real vulnerability during extreme heat. The City's real RARA program funds heat-pump and electrification retrofits for market rental buildings.</p>" +
       '<div class="choice-row">' +
-      '<button class="choice-card" data-policy="status_quo"><h3>Status quo</h3><p>No new investment in irrigation efficiency.</p></button>' +
-      '<button class="choice-card" data-policy="proactive"><h3>Drip-irrigation efficiency upgrades</h3><p>Invest in efficient irrigation (a real BC Agriculture / Okanagan Basin Water Board adaptation measure).</p></button>' +
+      '<button class="choice-card" data-policy="status_quo"><h3>Status quo</h3><p>No new investment in building retrofits.</p></button>' +
+      '<button class="choice-card" data-policy="proactive"><h3>Heat-pump retrofit investment</h3><p>Fund heat-pump/electrification retrofits (the real City of Vancouver RARA program).</p></button>' +
       "</div>";
     show("screen-act");
     content.querySelectorAll(".choice-card").forEach(function (btn) {
       btn.addEventListener("click", function () {
-        state.waterPolicy = btn.dataset.policy;
-        var result = waterScarcity(state.horizon, state.waterPolicy);
-        showActOutcome("Water Vision", result.index, [
-          ["Water scarcity index", result.index + " / 100"],
-          ["Summer precipitation reduction used", "-" + result.precipReductionPct.toFixed(1) + "% (real, cited)"],
-          ["Irrigation efficiency effect", result.policyMitigation > 0 ? "-" + result.policyMitigation + " points" : "none"],
+        state.energyPolicy = btn.dataset.policy;
+        var result = energyVulnerability(state.horizon, state.energyPolicy);
+        showActOutcome("Energy Vision", result.index, [
+          ["Building energy vulnerability index", result.index + " / 100"],
+          ["Horizon severity factor used", "+" + result.horizonFactor + " points (illustrative)"],
+          ["Retrofit investment effect", result.policyMitigation > 0 ? "-" + result.policyMitigation + " points" : "none"],
         ], startAct3);
       });
     });
@@ -96,22 +112,23 @@
   function startAct3() {
     var content = document.getElementById("act-content");
     content.innerHTML =
-      '<div class="act-badge">Shoreline Vision</div>' +
-      "<h2>Okanagan Lake Foreshore, Downtown to Mission</h2>" +
-      "<p>Okanagan Lake is managed within a real regulated band, 340.4m (lowest desirable) to 342.48m (full pool). Hotter summers and higher demand pull typical late-summer levels toward the lower end of that band.</p>" +
+      '<div class="act-badge">Flood Vision</div>' +
+      "<h2>False Creek foreshore</h2>" +
+      "<p>The City of Vancouver's real coastal Flood Construction Level is 4.6m, set to protect waterfront structures through 2100 against a real, cited ~1m of sea level rise. False Creek is one of the areas the City's own coastal adaptation planning (Sea2City) is actively working through right now.</p>" +
       '<div class="choice-row">' +
-      '<button class="choice-card" data-policy="status_quo"><h3>Status quo</h3><p>Hard shoreline infrastructure, no new wetland investment.</p></button>' +
-      '<button class="choice-card" data-policy="proactive"><h3>Wetland restoration &amp; setbacks</h3><p>Restore shoreline wetlands and set back new development.</p></button>' +
+      '<button class="choice-card" data-policy="status_quo"><h3>Status quo</h3><p>Hard shoreline infrastructure, no new green adaptation investment.</p></button>' +
+      '<button class="choice-card" data-policy="proactive"><h3>Coastal green infrastructure</h3><p>Invest in green infrastructure and setbacks (the real Sea2City / False Creek Coastal Adaptation Plan approach).</p></button>' +
       "</div>";
     show("screen-act");
     content.querySelectorAll(".choice-card").forEach(function (btn) {
       btn.addEventListener("click", function () {
-        state.shorelinePolicy = btn.dataset.policy;
-        var result = shorelineOutlook(state.horizon, state.shorelinePolicy);
-        showActOutcome("Shoreline Vision", result.heatExposureIndex, [
-          ["Typical late-summer lake level", result.typicalLateSummerLevel + " m (real regulated band: 340.4–342.48 m)"],
-          ["Heat exposure index", result.heatExposureIndex + " / 100"],
-          ["Wetland/setback effect", state.shorelinePolicy === "proactive" ? "applied" : "none"],
+        state.floodPolicy = btn.dataset.policy;
+        var result = floodRisk(state.horizon, state.floodPolicy);
+        showActOutcome("Flood Vision", result.index, [
+          ["Coastal flood risk index", result.index + " / 100"],
+          ["Sea level rise used", result.seaLevelRiseM + " m (real, cited)"],
+          ["Real Flood Construction Level", FCL_M + " m (City of Vancouver, cited)"],
+          ["Green infrastructure effect", result.policyMitigation > 0 ? "-" + result.policyMitigation + " points" : "none"],
         ], showSummary);
       });
     });
@@ -133,14 +150,14 @@
   }
 
   function showSummary() {
-    var outcome = computeOutcome({ horizon: state.horizon, firePolicy: state.firePolicy, waterPolicy: state.waterPolicy, shorelinePolicy: state.shorelinePolicy });
+    var outcome = computeOutcome({ horizon: state.horizon, floodPolicy: state.floodPolicy, heatPolicy: state.heatPolicy, energyPolicy: state.energyPolicy });
     state.outcome = outcome;
     var html =
-      "<p>Your choices, computed together across the whole region:</p>" +
+      "<p>Your choices, computed together across the whole city:</p>" +
       '<table class="summary-table"><tr><th>Act</th><th>Choice</th><th>Index</th></tr>' +
-      "<tr><td>Fire Vision</td><td>" + state.firePolicy + "</td><td>" + outcome.fire.index + " / 100</td></tr>" +
-      "<tr><td>Water Vision</td><td>" + state.waterPolicy + "</td><td>" + outcome.water.index + " / 100</td></tr>" +
-      "<tr><td>Shoreline Vision</td><td>" + state.shorelinePolicy + "</td><td>" + outcome.shoreline.typicalLateSummerLevel + " m</td></tr>" +
+      "<tr><td>Heat Vision</td><td>" + state.heatPolicy + "</td><td>" + outcome.heat.index + " / 100</td></tr>" +
+      "<tr><td>Energy Vision</td><td>" + state.energyPolicy + "</td><td>" + outcome.energy.index + " / 100</td></tr>" +
+      "<tr><td>Flood Vision</td><td>" + state.floodPolicy + "</td><td>" + outcome.flood.index + " / 100</td></tr>" +
       "</table>" +
       "<p><b>Composite regional risk index: " + outcome.compositeRiskIndex + " / 100</b> (horizon: " + state.horizon + ")</p>";
     document.getElementById("summary-content").innerHTML = html;
@@ -150,12 +167,10 @@
   document.getElementById("btn-summary-continue").addEventListener("click", function () {
     show("screen-post-survey");
     renderSurvey(document.getElementById("post-survey-container"), "post");
-    wireSurveyCompletion("post-survey-container", "btn-post-survey-continue", "post-survey-hint");
-  });
-
-  document.getElementById("btn-post-survey-continue").addEventListener("click", function () {
-    state.post = collectResponses(document.getElementById("post-survey-container"));
-    finish();
+    wireSurveyCompletion("post-survey-container", "btn-post-survey-continue", "post-survey-hint", function (responses) {
+      state.post = responses;
+      finish();
+    });
   });
 
   function finish() {
@@ -163,12 +178,12 @@
       participant_id: participantId, condition: condition, timestamp: new Date().toISOString(),
       pre_nep_score: scoreNEP(state.pre), post_nep_score: scoreNEP(state.post),
       pre_policy_score: scorePolicySupport(state.pre), post_policy_score: scorePolicySupport(state.post),
-      horizon: state.horizon, fire_policy: state.firePolicy, water_policy: state.waterPolicy, shoreline_policy: state.shorelinePolicy,
-      fire_risk_index: state.outcome.fire.index, water_scarcity_index: state.outcome.water.index,
-      shoreline_level_m: state.outcome.shoreline.typicalLateSummerLevel, composite_risk_index: state.outcome.compositeRiskIndex,
+      horizon: state.horizon, flood_policy: state.floodPolicy, heat_policy: state.heatPolicy, energy_policy: state.energyPolicy,
+      flood_risk_index: state.outcome.flood.index, heat_exposure_index: state.outcome.heat.index,
+      energy_vulnerability_index: state.outcome.energy.index, composite_risk_index: state.outcome.compositeRiskIndex,
     };
     try {
-      window.localStorage.setItem("okanagan_climate_futures_" + participantId, JSON.stringify(record));
+      window.localStorage.setItem("vancouver_climate_futures_" + participantId, JSON.stringify(record));
     } catch (e) { /* localStorage unavailable; export below still works from memory */ }
 
     document.getElementById("participant-id-note").textContent = "Participant ID: " + participantId + " (condition: " + condition + ")";
@@ -178,7 +193,7 @@
       var url = URL.createObjectURL(blob);
       var a = document.createElement("a");
       a.href = url;
-      a.download = "okanagan_climate_futures_" + participantId + ".csv";
+      a.download = "vancouver_climate_futures_" + participantId + ".csv";
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);

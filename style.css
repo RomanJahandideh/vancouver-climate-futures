@@ -13,6 +13,23 @@ html, body { margin: 0; height: 100%; font-family: "Segoe UI", Arial, sans-serif
 .panel { background: #faf6ee; border-radius: 14px; padding: 28px 32px; max-width: 560px; width: 100%; box-shadow: 0 12px 40px rgba(0,0,0,0.35); max-height: 86vh; overflow-y: auto; }
 .panel.wide { max-width: 720px; }
 
+/* Docked screens (intro, horizon, act, summary): the 3D scene stays
+   fully visible and draggable at all times, only the panel itself
+   captures clicks, not the whole viewport, and no dark scrim covers
+   the scene. Only the pre/post surveys (plain forms, no scene
+   relevance) stay as a centered, focused modal. */
+.screen--docked { background: transparent; align-items: flex-end; padding: 0; pointer-events: none; }
+.screen--docked .panel { pointer-events: auto; max-width: 720px; width: 100%; border-radius: 18px 18px 0 0; max-height: 50vh; margin: 0 16px 0; box-shadow: 0 -12px 40px rgba(0,0,0,0.35); transition: transform 0.35s ease; }
+.screen--docked.collapsed .panel { transform: translateY(calc(100% - 54px)); }
+.dock-handle { pointer-events: auto; display: flex; align-items: center; justify-content: center; gap: 6px; background: #e2ddd2; color: #3a352e; font-family: "Segoe UI", Arial, sans-serif; font-size: 12px; font-weight: 700; border: none; border-radius: 20px; padding: 7px 16px; cursor: pointer; margin: 0 auto 10px; }
+.dock-handle:hover { background: #d2cbbc; }
+
+#scene-hint { position: fixed; left: 20px; bottom: 20px; z-index: 6; font-family: "Segoe UI", Arial, sans-serif; font-size: 12px; color: #f3efe4; background: rgba(14, 26, 20, 0.45); padding: 7px 12px; border-radius: 20px; pointer-events: none; text-shadow: 0 1px 3px rgba(0,0,0,0.5); }
+#scene-hint[hidden] { display: none; }
+
+#watch-banner { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 6; font-family: "Segoe UI", Arial, sans-serif; font-weight: 700; color: #fff; background: rgba(14, 26, 20, 0.55); padding: 10px 20px; border-radius: 24px; pointer-events: none; text-shadow: 0 1px 3px rgba(0,0,0,0.5); opacity: 0; transition: opacity 0.3s ease; }
+#watch-banner.visible { opacity: 1; }
+
 h1 { font-size: 26px; margin: 0 0 12px; color: #100e0c; }
 h2 { font-size: 20px; margin: 0 0 10px; color: #100e0c; }
 h3 { font-size: 15px; margin: 0 0 6px; color: #100e0c; }
@@ -36,7 +53,10 @@ p.condition-note { font-size: 11.5px; color: #a89f8f; font-style: italic; }
 .survey-scale { display: flex; gap: 6px; }
 .survey-btn { width: 38px; height: 38px; border-radius: 8px; border: 2px solid #e2ddd2; background: #fff; cursor: pointer; font-weight: 700; color: #6b6660; }
 .survey-btn.selected { border-color: #e07b5a; background: #e07b5a; color: #fff; }
-.survey-hint { font-size: 12px; color: #b5502f; }
+.survey-hint { font-size: 12px; color: #b5502f; font-weight: 700; }
+.survey-row.missing { background: #fdecea; border-radius: 8px; padding: 8px 10px 4px; margin-left: -10px; margin-right: -10px; }
+.survey-row.missing label { color: #b5502f; }
+.survey-row.missing .survey-btn { border-color: #e07b5a; }
 
 .outcome-box { background: #f1ede4; border-radius: 10px; padding: 14px 16px; margin: 14px 0; }
 .outcome-row { display: flex; justify-content: space-between; font-size: 13.5px; margin-bottom: 6px; }

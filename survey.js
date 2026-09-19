@@ -30,9 +30,9 @@ const NEP_ITEMS = [
 ];
 
 const POLICY_ITEMS = [
-  { id: "policy_fire", text: "The Okanagan should invest in proactive wildfire fuel management (prescribed burns, fuel thinning) even if it costs more than doing nothing new." },
-  { id: "policy_water", text: "The Okanagan should invest in drip-irrigation efficiency upgrades for agriculture even if it costs more than doing nothing new." },
-  { id: "policy_shoreline", text: "The Okanagan should invest in shoreline wetland restoration and building setbacks even if it limits some waterfront development." },
+  { id: "policy_heat", text: "Vancouver should invest in tree canopy and cooling infrastructure for lower-canopy neighbourhoods even if it costs more than doing nothing new." },
+  { id: "policy_energy", text: "Vancouver should invest in heat-pump/electrification retrofits for older rental buildings even if it costs more than doing nothing new." },
+  { id: "policy_flood", text: "Vancouver should invest in coastal green infrastructure and shoreline setbacks even if it limits some waterfront development." },
 ];
 
 const ALL_ITEMS = NEP_ITEMS.concat(POLICY_ITEMS);
@@ -88,6 +88,10 @@ function isComplete(responses) {
   return ALL_ITEMS.every((item) => responses[item.id] !== null && responses[item.id] !== undefined);
 }
 
+function missingItemIds(responses) {
+  return ALL_ITEMS.filter((item) => responses[item.id] === null || responses[item.id] === undefined).map((item) => item.id);
+}
+
 /** Averages the 6 NEP-subset items, reverse-scoring anti-NEP items
  * (score' = 6 - score) first, per the scale's standard convention.
  * Higher = stronger pro-ecological worldview. Returns null if any item
@@ -114,16 +118,16 @@ function toCsvRow(record) {
   const fields = [
     "participant_id", "condition", "timestamp",
     "pre_nep_score", "post_nep_score", "pre_policy_score", "post_policy_score",
-    "horizon", "fire_policy", "water_policy", "shoreline_policy",
-    "fire_risk_index", "water_scarcity_index", "shoreline_level_m", "composite_risk_index",
+    "horizon", "flood_policy", "heat_policy", "energy_policy",
+    "flood_risk_index", "heat_exposure_index", "energy_vulnerability_index", "composite_risk_index",
   ];
   return fields.map((f) => JSON.stringify(record[f] === undefined ? "" : record[f])).join(",");
 }
 
 function csvHeader() {
-  return "participant_id,condition,timestamp,pre_nep_score,post_nep_score,pre_policy_score,post_policy_score,horizon,fire_policy,water_policy,shoreline_policy,fire_risk_index,water_scarcity_index,shoreline_level_m,composite_risk_index";
+  return "participant_id,condition,timestamp,pre_nep_score,post_nep_score,pre_policy_score,post_policy_score,horizon,flood_policy,heat_policy,energy_policy,flood_risk_index,heat_exposure_index,energy_vulnerability_index,composite_risk_index";
 }
 
 if (typeof module !== "undefined" && module.exports) {
-  module.exports = { NEP_ITEMS, POLICY_ITEMS, ALL_ITEMS, scoreNEP, scorePolicySupport, isComplete, toCsvRow, csvHeader };
+  module.exports = { NEP_ITEMS, POLICY_ITEMS, ALL_ITEMS, scoreNEP, scorePolicySupport, isComplete, missingItemIds, toCsvRow, csvHeader };
 }

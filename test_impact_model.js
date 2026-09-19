@@ -9,8 +9,8 @@
  * Run with: node test_impact_model.js
  */
 const {
-  fireRisk, waterScarcity, shorelineOutlook, computeOutcome,
-  HOT_DAYS_BY_HORIZON,
+  floodRisk, heatExposure, energyVulnerability, computeOutcome, floodRiskToWaterLevel,
+  SEA_LEVEL_RISE_M, FCL_M, FALSE_CREEK_BASELINE_M,
 } = require("./impact_model.js");
 
 let PASS = 0, FAIL = 0;
@@ -19,84 +19,86 @@ function check(name, cond) {
   else { FAIL++; console.log("FAIL:", name); }
 }
 
-const HORIZONS = ["2050s", "2080s"];
+const HORIZONS = ["2050s", "2100s"];
 const POLICIES = ["status_quo", "proactive"];
 
-// --- exhaustive monotonicity: worse horizon (2080s) must never IMPROVE
+// --- exhaustive monotonicity: worse horizon (2100s) must never IMPROVE
 // any risk index relative to 2050s, for every fixed policy combination ---
-let fireHorizonViolations = 0, waterHorizonViolations = 0, shorelineHorizonViolations = 0, heatHorizonViolations = 0;
-for (const firePolicy of POLICIES) {
-  for (const waterPolicy of POLICIES) {
-    for (const shorelinePolicy of POLICIES) {
-      const near = computeOutcome({ horizon: "2050s", firePolicy, waterPolicy, shorelinePolicy });
-      const far = computeOutcome({ horizon: "2080s", firePolicy, waterPolicy, shorelinePolicy });
-      if (far.fire.index < near.fire.index) fireHorizonViolations++;
-      if (far.water.index < near.water.index) waterHorizonViolations++;
-      if (far.shoreline.typicalLateSummerLevel > near.shoreline.typicalLateSummerLevel) shorelineHorizonViolations++;
-      if (far.shoreline.heatExposureIndex < near.shoreline.heatExposureIndex) heatHorizonViolations++;
+let floodHorizonViolations = 0, heatHorizonViolations = 0, energyHorizonViolations = 0, waterLevelHorizonViolations = 0;
+for (const floodPolicy of POLICIES) {
+  for (const heatPolicy of POLICIES) {
+    for (const energyPolicy of POLICIES) {
+      const near = computeOutcome({ horizon: "2050s", floodPolicy, heatPolicy, energyPolicy });
+      const far = computeOutcome({ horizon: "2100s", floodPolicy, heatPolicy, energyPolicy });
+      if (far.flood.index < near.flood.index) floodHorizonViolations++;
+      if (far.heat.index < near.heat.index) heatHorizonViolations++;
+      if (far.energy.index < near.energy.index) energyHorizonViolations++;
+      if (far.falseCreekWaterLevelM < near.falseCreekWaterLevelM) waterLevelHorizonViolations++;
     }
   }
 }
-check("fire risk never improves from 2050s->2080s, across all 8 policy combos (0 violations)", fireHorizonViolations === 0);
-check("water scarcity never improves from 2050s->2080s, across all 8 policy combos (0 violations)", waterHorizonViolations === 0);
-check("lake level never improves (rises) from 2050s->2080s, across all 8 policy combos (0 violations)", shorelineHorizonViolations === 0);
-check("heat exposure never improves from 2050s->2080s, across all 8 policy combos (0 violations)", heatHorizonViolations === 0);
+check("flood risk never improves from 2050s->2100s, across all 8 policy combos (0 violations)", floodHorizonViolations === 0);
+check("heat exposure never improves from 2050s->2100s, across all 8 policy combos (0 violations)", heatHorizonViolations === 0);
+check("energy vulnerability never improves from 2050s->2100s, across all 8 policy combos (0 violations)", energyHorizonViolations === 0);
+check("False Creek water level never falls from 2050s->2100s, across all 8 policy combos (0 violations)", waterLevelHorizonViolations === 0);
 
 // --- exhaustive monotonicity: proactive policy must never make ITS
 // OWN act's index worse than status_quo, for every fixed horizon and
 // every combination of the OTHER two acts' policies ---
-let firePolicyViolations = 0, waterPolicyViolations = 0, shorelinePolicyViolations = 0;
+let floodPolicyViolations = 0, heatPolicyViolations = 0, energyPolicyViolations = 0;
 for (const horizon of HORIZONS) {
-  for (const waterPolicy of POLICIES) {
-    for (const shorelinePolicy of POLICIES) {
-      const sq = computeOutcome({ horizon, firePolicy: "status_quo", waterPolicy, shorelinePolicy });
-      const pro = computeOutcome({ horizon, firePolicy: "proactive", waterPolicy, shorelinePolicy });
-      if (pro.fire.index > sq.fire.index) firePolicyViolations++;
+  for (const heatPolicy of POLICIES) {
+    for (const energyPolicy of POLICIES) {
+      const sq = computeOutcome({ horizon, floodPolicy: "status_quo", heatPolicy, energyPolicy });
+      const pro = computeOutcome({ horizon, floodPolicy: "proactive", heatPolicy, energyPolicy });
+      if (pro.flood.index > sq.flood.index) floodPolicyViolations++;
     }
   }
-  for (const firePolicy of POLICIES) {
-    for (const shorelinePolicy of POLICIES) {
-      const sq = computeOutcome({ horizon, firePolicy, waterPolicy: "status_quo", shorelinePolicy });
-      const pro = computeOutcome({ horizon, firePolicy, waterPolicy: "proactive", shorelinePolicy });
-      if (pro.water.index > sq.water.index) waterPolicyViolations++;
+  for (const floodPolicy of POLICIES) {
+    for (const energyPolicy of POLICIES) {
+      const sq = computeOutcome({ horizon, floodPolicy, heatPolicy: "status_quo", energyPolicy });
+      const pro = computeOutcome({ horizon, floodPolicy, heatPolicy: "proactive", energyPolicy });
+      if (pro.heat.index > sq.heat.index) heatPolicyViolations++;
     }
   }
-  for (const firePolicy of POLICIES) {
-    for (const waterPolicy of POLICIES) {
-      const sq = computeOutcome({ horizon, firePolicy, waterPolicy, shorelinePolicy: "status_quo" });
-      const pro = computeOutcome({ horizon, firePolicy, waterPolicy, shorelinePolicy: "proactive" });
-      if (pro.shoreline.typicalLateSummerLevel < sq.shoreline.typicalLateSummerLevel) shorelinePolicyViolations++;
+  for (const floodPolicy of POLICIES) {
+    for (const heatPolicy of POLICIES) {
+      const sq = computeOutcome({ horizon, floodPolicy, heatPolicy, energyPolicy: "status_quo" });
+      const pro = computeOutcome({ horizon, floodPolicy, heatPolicy, energyPolicy: "proactive" });
+      if (pro.energy.index > sq.energy.index) energyPolicyViolations++;
     }
   }
 }
-check("proactive fire policy never raises fire risk, across all 2x4 other-choice combos (0 violations)", firePolicyViolations === 0);
-check("proactive water policy never raises water scarcity, across all 2x4 other-choice combos (0 violations)", waterPolicyViolations === 0);
-check("proactive shoreline policy never lowers the typical lake level, across all 2x4 other-choice combos (0 violations)", shorelinePolicyViolations === 0);
+check("proactive coastal policy never raises flood risk, across all 2x4 other-choice combos (0 violations)", floodPolicyViolations === 0);
+check("proactive canopy policy never raises heat exposure, across all 2x4 other-choice combos (0 violations)", heatPolicyViolations === 0);
+check("proactive retrofit policy never raises energy vulnerability, across all 2x4 other-choice combos (0 violations)", energyPolicyViolations === 0);
 
 // --- boundary/identity checks: exact formula behaviour, not just direction ---
-const f2080 = fireRisk("2080s", "status_quo");
-check("hotDaysFactor is exactly 40 at the 2080s horizon (hotDays/hotDays2080 == 1)", f2080.hotDaysFactor === 40);
-const w2080 = waterScarcity("2080s", "status_quo");
-check("2080s uses the full cited -23% precipitation reduction, not the 2050s-interpolated fraction", w2080.precipReductionPct === 23);
-const s2050status = shorelineOutlook("2050s", "status_quo");
-const s2050proactive = shorelineOutlook("2050s", "proactive");
-check("shoreline level stays within [lowest_desirable - 0.3, full_pool] at every tested point",
-  s2050status.typicalLateSummerLevel <= 342.48 && s2050status.typicalLateSummerLevel >= 340.1 &&
-  s2050proactive.typicalLateSummerLevel <= 342.48 && s2050proactive.typicalLateSummerLevel >= 340.1);
+const f2100 = floodRisk("2100s", "status_quo");
+check("seaLevelFactor is exactly 45 at the 2100s horizon (SLR/SLR2100 == 1)", f2100.seaLevelFactor === 45);
+check("2100s uses the full real cited 1m sea level rise figure", f2100.seaLevelRiseM === SEA_LEVEL_RISE_M["2100s"]);
+check("2050s uses the real cited 0.5m sea level rise figure", floodRisk("2050s", "status_quo").seaLevelRiseM === 0.5);
+
+// floodRiskToWaterLevel must stay within the real cited FCL ceiling and the illustrative baseline floor.
+check("floodRiskToWaterLevel(0) == the illustrative baseline exactly", floodRiskToWaterLevel(0) === FALSE_CREEK_BASELINE_M);
+check("floodRiskToWaterLevel(100) == the real cited FCL exactly", floodRiskToWaterLevel(100) === FCL_M);
+const midLevel = floodRiskToWaterLevel(50);
+check("floodRiskToWaterLevel(50) is exactly halfway between baseline and the real FCL",
+  Math.abs(midLevel - (FALSE_CREEK_BASELINE_M + (FCL_M - FALSE_CREEK_BASELINE_M) / 2)) < 1e-6);
 
 // --- composite index: must equal the mean of its three real components, not an approximation ---
-const outcome = computeOutcome({ horizon: "2080s", firePolicy: "status_quo", waterPolicy: "status_quo", shorelinePolicy: "status_quo" });
-const expectedComposite = Math.round((outcome.fire.index + outcome.water.index + outcome.shoreline.heatExposureIndex) / 3);
+const outcome = computeOutcome({ horizon: "2100s", floodPolicy: "status_quo", heatPolicy: "status_quo", energyPolicy: "status_quo" });
+const expectedComposite = Math.round((outcome.flood.index + outcome.heat.index + outcome.energy.index) / 3);
 check("composite risk index is exactly the mean of the three act indices", outcome.compositeRiskIndex === expectedComposite);
 
 // --- worst-case vs best-case sanity: the single best combination
 // (2050s, proactive everywhere) must strictly beat the single worst
-// (2080s, status_quo everywhere) on every one of the three act indices ---
-const best = computeOutcome({ horizon: "2050s", firePolicy: "proactive", waterPolicy: "proactive", shorelinePolicy: "proactive" });
-const worst = computeOutcome({ horizon: "2080s", firePolicy: "status_quo", waterPolicy: "status_quo", shorelinePolicy: "status_quo" });
-check("best combination strictly beats worst on fire risk", best.fire.index < worst.fire.index);
-check("best combination strictly beats worst on water scarcity", best.water.index < worst.water.index);
-check("best combination strictly beats worst on lake level", best.shoreline.typicalLateSummerLevel > worst.shoreline.typicalLateSummerLevel);
+// (2100s, status_quo everywhere) on every one of the three act indices ---
+const best = computeOutcome({ horizon: "2050s", floodPolicy: "proactive", heatPolicy: "proactive", energyPolicy: "proactive" });
+const worst = computeOutcome({ horizon: "2100s", floodPolicy: "status_quo", heatPolicy: "status_quo", energyPolicy: "status_quo" });
+check("best combination strictly beats worst on flood risk", best.flood.index < worst.flood.index);
+check("best combination strictly beats worst on heat exposure", best.heat.index < worst.heat.index);
+check("best combination strictly beats worst on energy vulnerability", best.energy.index < worst.energy.index);
 check("best combination strictly beats worst on composite risk index", best.compositeRiskIndex < worst.compositeRiskIndex);
 
 console.log("\n%d passed, %d failed", PASS, FAIL);
