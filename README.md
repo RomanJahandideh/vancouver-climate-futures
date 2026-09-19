@@ -38,8 +38,8 @@ RQ1 and RQ2 need real human participants; no study with real participants has be
 ## How to test it
 
 ```
-git clone https://github.com/RomanJahandideh/okanagan-climate-futures.git
-cd okanagan-climate-futures
+git clone https://github.com/RomanJahandideh/vancouver-climate-futures.git
+cd vancouver-climate-futures
 ```
 
 1. **Run the unit tests first.** `node test_impact_model.js` (18 checks, RQ3/H3), `node test_survey.js` (12 checks), `python test_analysis.py` (6 checks, synthetic data only, clearly labeled).
