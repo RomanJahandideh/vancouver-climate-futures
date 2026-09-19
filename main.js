@@ -19,22 +19,101 @@
   // ==========================================================================
   var container = document.getElementById("scene-container");
   var scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x9fc9e0);
-  scene.fog = new THREE.Fog(0x9fc9e0, 60, 260);
+  scene.fog = new THREE.Fog(0xbfe0f0, 170, 420);
 
   var camera = new THREE.PerspectiveCamera(48, window.innerWidth / window.innerHeight, 0.1, 1000);
   var renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
   renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  if ("outputEncoding" in renderer) renderer.outputEncoding = THREE.sRGBEncoding;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.05;
   container.appendChild(renderer.domElement);
 
-  scene.add(new THREE.AmbientLight(0xffffff, 0.65));
-  var sun = new THREE.DirectionalLight(0xfff2d8, 0.95);
-  sun.position.set(60, 80, 30);
+  // ---- procedural sky dome (a canvas gradient on a large inverted
+  // sphere), no external image asset, fully self-contained ----
+  (function buildSky() {
+    var c = document.createElement("canvas");
+    c.width = 2; c.height = 256;
+    var ctx = c.getContext("2d");
+    var grad = ctx.createLinearGradient(0, 0, 0, 256);
+    grad.addColorStop(0.0, "#3f8fd6");
+    grad.addColorStop(0.35, "#6bb3e6");
+    grad.addColorStop(0.65, "#bfe0f0");
+    grad.addColorStop(1.0, "#eaf3e8");
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, 2, 256);
+    var tex = new THREE.CanvasTexture(c);
+    var skyGeo = new THREE.SphereGeometry(400, 24, 16);
+    var skyMat = new THREE.MeshBasicMaterial({ map: tex, side: THREE.BackSide, fog: false, toneMapped: false });
+    scene.add(new THREE.Mesh(skyGeo, skyMat));
+  })();
+
+  // ---- lighting: a soft sky/ground hemisphere fill plus a real
+  // shadow-casting sun, replacing the earlier flat ambient + two
+  // directional lights with no shadows ----
+  scene.add(new THREE.HemisphereLight(0xcfe8f7, 0x9c8a5a, 0.55));
+  var sun = new THREE.DirectionalLight(0xfff2d8, 1.15);
+  sun.position.set(55, 70, 35);
+  sun.castShadow = true;
+  sun.shadow.mapSize.set(2048, 2048);
+  sun.shadow.camera.left = -75;
+  sun.shadow.camera.right = 75;
+  sun.shadow.camera.top = 55;
+  sun.shadow.camera.bottom = -55;
+  sun.shadow.camera.near = 10;
+  sun.shadow.camera.far = 220;
+  sun.shadow.bias = -0.0015;
   scene.add(sun);
-  var fill = new THREE.DirectionalLight(0x88aaff, 0.2);
+  var fill = new THREE.DirectionalLight(0x88aaff, 0.18);
   fill.position.set(-40, 30, -30);
   scene.add(fill);
+
+  // ---- small canvas-texture helper: every "material" below is a real
+  // procedurally generated texture, not a flat color, and not an
+  // external image asset that could fail to load or need a license ----
+  function canvasTexture(size, draw) {
+    var c = document.createElement("canvas");
+    c.width = c.height = size;
+    draw(c.getContext("2d"), size);
+    var tex = new THREE.CanvasTexture(c);
+    tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+    return tex;
+  }
+
+  function mottledGroundTexture(base, speck1, speck2, repeat) {
+    var tex = canvasTexture(128, function (ctx, s) {
+      ctx.fillStyle = base;
+      ctx.fillRect(0, 0, s, s);
+      for (var i = 0; i < 900; i++) {
+        ctx.fillStyle = Math.random() < 0.5 ? speck1 : speck2;
+        ctx.globalAlpha = 0.15 + Math.random() * 0.25;
+        var x = Math.random() * s, y = Math.random() * s, r = 0.6 + Math.random() * 1.6;
+        ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    });
+    tex.repeat.set(repeat, repeat);
+    return tex;
+  }
+
+  function windowGridTexture(wallColor, litColor, darkColor) {
+    var tex = canvasTexture(64, function (ctx, s) {
+      ctx.fillStyle = wallColor;
+      ctx.fillRect(0, 0, s, s);
+      var cols = 4, rows = 6, pad = 3, cw = s / cols, rh = s / rows;
+      for (var r = 0; r < rows; r++) {
+        for (var c = 0; c < cols; c++) {
+          ctx.fillStyle = Math.random() < 0.35 ? litColor : darkColor;
+          ctx.fillRect(c * cw + pad, r * rh + pad, cw - pad * 2, rh - pad * 2);
+        }
+      }
+    });
+    tex.repeat.set(1, 1);
+    return tex;
+  }
 
   window.addEventListener("resize", function () {
     camera.aspect = window.innerWidth / window.innerHeight;
@@ -89,6 +168,10 @@
     return Math.sin(x * 0.15) * Math.cos(z * 0.12) * 1.6 + Math.sin(x * 0.4 + z * 0.3) * 0.5;
   }
 
+  var grassTex = mottledGroundTexture("#8f9a5e", "#7c8a4c", "#a3ac72", 10);
+  var pavementTex = mottledGroundTexture("#a99a76", "#9c8c68", "#b3a482", 8);
+  var sandTex = mottledGroundTexture("#c9bd97", "#bcae86", "#d4c9a6", 9);
+
   function buildNeighbourhoodGround() {
     var geo = new THREE.PlaneGeometry(26, 40, 24, 24);
     geo.rotateX(-Math.PI / 2);
@@ -98,9 +181,10 @@
       pos.setY(i, 0.6 + pseudoNoise(x, z) * 0.25);
     }
     geo.computeVertexNormals();
-    var mat = new THREE.MeshStandardMaterial({ color: 0x8a8064, roughness: 1 });
+    var mat = new THREE.MeshStandardMaterial({ map: grassTex, roughness: 1 });
     var mesh = new THREE.Mesh(geo, mat);
     mesh.position.set(-34, 0, -6);
+    mesh.receiveShadow = true;
     scene.add(mesh);
     return mesh;
   }
@@ -109,9 +193,10 @@
   function buildRentalBlockGround() {
     var geo = new THREE.PlaneGeometry(26, 34, 4, 4);
     geo.rotateX(-Math.PI / 2);
-    var mat = new THREE.MeshStandardMaterial({ color: 0x9c8a5a, roughness: 1 });
+    var mat = new THREE.MeshStandardMaterial({ map: pavementTex, roughness: 1 });
     var mesh = new THREE.Mesh(geo, mat);
     mesh.position.set(0, 0.4, -4);
+    mesh.receiveShadow = true;
     scene.add(mesh);
     return mesh;
   }
@@ -120,9 +205,10 @@
   function buildForeshoreGround() {
     var geo = new THREE.PlaneGeometry(30, 40, 4, 4);
     geo.rotateX(-Math.PI / 2);
-    var mat = new THREE.MeshStandardMaterial({ color: 0x8a8064, roughness: 1 });
+    var mat = new THREE.MeshStandardMaterial({ map: sandTex, roughness: 1 });
     var mesh = new THREE.Mesh(geo, mat);
     mesh.position.set(34, -0.6, -4);
+    mesh.receiveShadow = true;
     scene.add(mesh);
     return mesh;
   }
@@ -138,11 +224,16 @@
     var t = (levelM - FALSE_CREEK_BASELINE_M) / (FCL_M - FALSE_CREEK_BASELINE_M);
     return 0.2 + Math.max(0, Math.min(1, t)) * 2.4;
   }
-  var waterGeo = new THREE.PlaneGeometry(26, 34);
+  var waterGeo = new THREE.PlaneGeometry(26, 34, 40, 40);
   waterGeo.rotateX(-Math.PI / 2);
-  var waterMat = new THREE.MeshStandardMaterial({ color: 0x2f6fa8, roughness: 0.35, metalness: 0.05, transparent: true, opacity: 0.92 });
+  var waterBasePositions = waterGeo.attributes.position.array.slice();
+  var waterMat = new THREE.MeshPhysicalMaterial({
+    color: 0x2f6fa8, roughness: 0.2, metalness: 0.05,
+    clearcoat: 0.6, clearcoatRoughness: 0.3, transparent: true, opacity: 0.9,
+  });
   var waterMesh = new THREE.Mesh(waterGeo, waterMat);
   waterMesh.position.set(34, waterLevelToLocalY(FALSE_CREEK_BASELINE_M), -4);
+  waterMesh.receiveShadow = true;
   scene.add(waterMesh);
 
   // Green shoreline buffer, shown only when the proactive coastal
@@ -155,44 +246,70 @@
   var bufferMesh = new THREE.Mesh(bufferGeo, bufferMat);
   bufferMesh.position.set(34, 0.25, -4);
   bufferMesh.visible = false;
+  bufferMesh.receiveShadow = true;
   scene.add(bufferMesh);
 
-  // A generic low-rise building cluster near the neighbourhood ground.
+  // A generic low-rise building cluster near the neighbourhood ground,
+  // walls textured with a procedural lit/unlit window grid rather than
+  // a flat color box.
+  var houseWindowTex = windowGridTexture("#e4ddc8", "#ffe9a8", "#7d7562");
   (function buildHouses() {
     var group = new THREE.Group();
+    var houseMat = new THREE.MeshStandardMaterial({ map: houseWindowTex, roughness: 0.8 });
     for (var i = 0; i < 14; i++) {
       var w = 1.2 + Math.random() * 1.2, h = 1.5 + Math.random() * 2.5, d = 1.2 + Math.random() * 1.2;
-      var box = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), new THREE.MeshStandardMaterial({ color: 0xd8d2c4, roughness: 0.9 }));
+      var box = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), houseMat);
       box.position.set(-34 + (Math.random() - 0.5) * 16, h / 2 + 0.6, 12 + (Math.random() - 0.5) * 6);
+      box.rotation.y = Math.random() * Math.PI * 2;
+      box.castShadow = true;
+      box.receiveShadow = true;
       group.add(box);
     }
     scene.add(group);
   })();
 
-  // --- street trees / canopy instances (Act 1: Heat Vision) ---
+  // --- street trees / canopy (Act 1: Heat Vision), a two-part
+  // trunk + foliage instanced tree for a real silhouette instead of a
+  // single bare cone ---
   var canopyGroup = new THREE.Group();
   scene.add(canopyGroup);
+  var trunkGeo = new THREE.CylinderGeometry(0.14, 0.2, 1.1, 6);
+  var trunkMat = new THREE.MeshStandardMaterial({ color: 0x5a4632, roughness: 1 });
+  var foliageGeoLower = new THREE.ConeGeometry(1.15, 2.0, 7);
+  var foliageGeoUpper = new THREE.ConeGeometry(0.8, 1.6, 7);
+
   function rebuildCanopy(heatResult, policy) {
     while (canopyGroup.children.length) canopyGroup.remove(canopyGroup.children[0]);
     // proactive tree-canopy investment = visibly more, denser canopy;
     // status quo = the sparser canopy documented in lower-canopy
     // neighbourhoods like Marpole during the 2021 heat dome.
-    var count = policy === "proactive" ? 140 : 55;
+    var count = policy === "proactive" ? 130 : 50;
     var stress = heatResult.index / 100; // 0 cool/green -> 1 hot/hazy
     var green = new THREE.Color(0x2f6b3a);
     var stressedColor = new THREE.Color(0x8a7a55);
     var col = green.clone().lerp(stressedColor, stress);
-    var canopyMat = new THREE.MeshStandardMaterial({ color: col, roughness: 1 });
-    var canopyGeo = new THREE.ConeGeometry(0.9, 3, 6);
-    var inst = new THREE.InstancedMesh(canopyGeo, canopyMat, count);
+    var foliageMat = new THREE.MeshStandardMaterial({ color: col, roughness: 1 });
+    var lowerInst = new THREE.InstancedMesh(foliageGeoLower, foliageMat, count);
+    var upperInst = new THREE.InstancedMesh(foliageGeoUpper, foliageMat, count);
+    var trunkInst = new THREE.InstancedMesh(trunkGeo, trunkMat, count);
+    lowerInst.castShadow = upperInst.castShadow = trunkInst.castShadow = true;
     var m = new THREE.Matrix4();
+    var q = new THREE.Quaternion();
+    var scaleV = new THREE.Vector3();
     for (var i = 0; i < count; i++) {
       var x = (Math.random() - 0.5) * 24;
       var z = -20 + Math.random() * 34;
-      m.makeTranslation(-34 + x, 0.6 + pseudoNoise(x, z) * 0.25 + 1.5, -6 + z);
-      inst.setMatrixAt(i, m);
+      var groundY = 0.6 + pseudoNoise(x, z) * 0.25;
+      var s = 0.75 + Math.random() * 0.6;
+      scaleV.set(s, s, s);
+      m.compose(new THREE.Vector3(-34 + x, groundY + 0.55 * s, -6 + z), q, scaleV);
+      trunkInst.setMatrixAt(i, m);
+      m.compose(new THREE.Vector3(-34 + x, groundY + 1.5 * s, -6 + z), q, scaleV);
+      lowerInst.setMatrixAt(i, m);
+      m.compose(new THREE.Vector3(-34 + x, groundY + 2.55 * s, -6 + z), q, scaleV);
+      upperInst.setMatrixAt(i, m);
     }
-    canopyGroup.add(inst);
+    canopyGroup.add(trunkInst, lowerInst, upperInst);
 
     // heat-shimmer haze overlay, opacity scales directly with the computed heat exposure index
     var hazeGeo = new THREE.PlaneGeometry(30, 40);
@@ -207,16 +324,19 @@
   // --- rental-housing block instances (Act 2: Energy Vision) ---
   var blocksGroup = new THREE.Group();
   scene.add(blocksGroup);
+  var blockWindowTex = windowGridTexture("#d8cfa8", "#fff0b0", "#6b6450");
   function rebuildBlocks(energyResult) {
     while (blocksGroup.children.length) blocksGroup.remove(blocksGroup.children[0]);
     var vulnerability = energyResult.index / 100;
     var retrofitted = new THREE.Color(0xd9a441); // warm, retrofitted/electrified
     var vulnerable = new THREE.Color(0x8a8a90); // dull grey, un-retrofitted
     var col = retrofitted.clone().lerp(vulnerable, vulnerability);
-    var rowMat = new THREE.MeshStandardMaterial({ color: col, roughness: 0.85 });
+    var rowMat = new THREE.MeshStandardMaterial({ map: blockWindowTex, color: col, roughness: 0.85 });
     var rowGeo = new THREE.BoxGeometry(1.6, 2.4, 3.2);
     var count = 16;
     var inst = new THREE.InstancedMesh(rowGeo, rowMat, count);
+    inst.castShadow = true;
+    inst.receiveShadow = true;
     var m = new THREE.Matrix4();
     for (var i = 0; i < count; i++) {
       var col_i = i % 4, row_i = Math.floor(i / 4);
@@ -234,11 +354,22 @@
     bufferMesh.visible = policy === "proactive";
   }
 
+  var clock = new THREE.Clock();
+  var waterPos = waterGeo.attributes.position;
+  function animateWater(t) {
+    for (var i = 0; i < waterPos.count; i++) {
+      var bx = waterBasePositions[i * 3], bz = waterBasePositions[i * 3 + 2], by = waterBasePositions[i * 3 + 1];
+      waterPos.setY(i, by + Math.sin(bx * 0.35 + t * 1.1) * 0.035 + Math.sin(bz * 0.5 + t * 0.8) * 0.03);
+    }
+    waterPos.needsUpdate = true;
+  }
+
   function animate() {
     requestAnimationFrame(animate);
     camTarget.lerp(camTargetGoal, 0.06);
     radius += (radiusGoal - radius) * 0.06;
     updateCameraPosition();
+    animateWater(clock.getElapsedTime());
     renderer.render(scene, camera);
   }
   focusOn(0, 0, 110);
